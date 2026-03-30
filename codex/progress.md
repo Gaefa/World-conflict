@@ -15,3 +15,10 @@ Original prompt: хочу и 1 и 2
   - Accessibility snapshot and screenshot captured in `output/web-game/` during validation.
 - Note: the skill-specific Playwright client still needed a browser download (`npx playwright install chromium`), which was not approved, so validation used the available browser tooling instead.
 - Next TODO: add richer event branching and an explicit campaign summary modal on win/loss.
+- 2026-03-03: Migrated `codex` from a single Vite app into a workspace layout:
+  - `apps/web` for the React/Vite client
+  - `apps/mobile` for an Expo React Native shell
+  - `packages/game-core` for shared simulation state, actions, timers, and win/loss logic
+- 2026-03-03: Web client now consumes `@codex/game-core` instead of owning its own game rules.
+- 2026-03-03: Added a first mobile shell wired to the same `game-core`; it is not visually polished yet, but it exercises the same campaign state and actions.
+- 2026-03-03: Verified `npm run typecheck:core` and `npm run build:web` from the `codex` workspace root after the migration.

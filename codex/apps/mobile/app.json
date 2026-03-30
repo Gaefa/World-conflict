@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Codex Conflict Simulator",
+    "slug": "codex-conflict-simulator",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"]
+  }
+}

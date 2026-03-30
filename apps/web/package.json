@@ -1,0 +1,38 @@
+{
+  "name": "@conflict-game/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conflict-game/game-logic": "*",
+    "@conflict-game/shared-types": "*",
+    "@conflict-game/utils": "*",
+    "@tanstack/react-query": "^5.67.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-globe.gl": "^2.27.0",
+    "recharts": "^2.15.0",
+    "three": "^0.173.0",
+    "topojson-client": "^3.1.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@conflict-game/game-logic",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./economy": "./src/economy/index.ts",
+    "./military": "./src/military/index.ts",
+    "./diplomacy": "./src/diplomacy/index.ts",
+    "./stability": "./src/stability/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conflict-game/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

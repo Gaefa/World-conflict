@@ -1,23 +1,15 @@
 {
-  "name": "codex-conflict-sim",
+  "name": "codex-conflict-platform",
   "private": true,
-  "version": "0.0.1",
-  "type": "module",
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "playwright": "^1.58.2",
-    "typescript": "^5.8.2",
-    "vite": "^5.4.14"
+    "dev:web": "npm run dev -w @codex/web",
+    "build:web": "npm run build -w @codex/web",
+    "dev:mobile": "npm run start -w @codex/mobile",
+    "typecheck:core": "npm run build -w @codex/game-core"
   }
 }

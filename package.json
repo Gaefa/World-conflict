@@ -1,0 +1,26 @@
+{
+  "name": "conflict-game",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "dev:server": "turbo dev --filter=@conflict-game/server",
+    "dev:web": "turbo dev --filter=@conflict-game/web",
+    "db:push": "npm run db:push --workspace=apps/server",
+    "db:seed": "npm run db:seed --workspace=apps/server"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@11.6.2"
+}

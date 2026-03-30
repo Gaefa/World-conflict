@@ -1,16 +1,18 @@
-# Codex Conflict Simulator
+# Codex Conflict Platform
 
-React + TypeScript starter for a geopolitical strategy simulator.
+Monorepo for a cross-platform geopolitical strategy game.
 
-## Run
+## Workspace layout
+
+- `apps/web` — React + Vite web client
+- `apps/mobile` — Expo React Native mobile shell
+- `packages/game-core` — shared simulation state, actions, turn resolution, and win/loss logic
+
+## Commands
 
 ```bash
 npm install
-npm run dev
-```
-
-## Build
-
-```bash
-npm run build
+npm run dev:web
+npm run build:web
+npm run dev:mobile
 ```
