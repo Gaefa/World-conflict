@@ -2,11 +2,21 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "server",
+      "runtimeExecutable": "/usr/local/bin/npx",
+      "runtimeArgs": ["tsx", "watch", "src/index.ts"],
+      "port": 3002,
+      "env": { "PORT": "3002", "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin" },
+      "cwd": "apps/server",
+      "autoNavigate": false
+    },
+    {
       "name": "web",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "/usr/local/bin/npx",
       "runtimeArgs": ["next", "dev"],
       "autoPort": true,
-      "cwd": "apps/web"
+      "cwd": "apps/web",
+      "env": { "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin" }
     }
   ]
 }

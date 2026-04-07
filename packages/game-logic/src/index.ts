@@ -3,3 +3,7 @@ export * from './military/index.js';
 export * from './diplomacy/index.js';
 export * from './stability/index.js';
 export * from './power-index.js';
+export * from './resources/processing-chains.js';
+export * from './resources/resource-tick.js';
+export * from './intelligence/intel-tick.js';
+export * from './technology/index.js';

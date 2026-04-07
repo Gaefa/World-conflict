@@ -1,6 +1,6 @@
 import type { GameState, GameStateDelta, CountryState, GameEvent } from '@conflict-game/shared-types';
-import { processEconomyTick, processStabilityTick, calculateIndexOfPower } from '@conflict-game/game-logic';
-import { broadcastToSession, sendToPlayer } from '../ws/handler.js';
+import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick } from '@conflict-game/game-logic';
+import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { drainActions } from './action-queue.js';
 import { processAction } from './action-processor.js';
 
@@ -67,6 +67,35 @@ export class GameLoop {
     }
   }
 
+  pause(sessionId: string): boolean {
+    const state = this.store.getState(sessionId);
+    if (!state) return false;
+    const id = this.intervals.get(sessionId);
+    if (id) {
+      clearInterval(id);
+      this.intervals.delete(sessionId);
+    }
+    state.session.status = 'paused';
+    this.store.setState(sessionId, state);
+    console.log(`[GameLoop] Paused session ${sessionId}`);
+    return true;
+  }
+
+  resume(sessionId: string): boolean {
+    const state = this.store.getState(sessionId);
+    if (!state || state.session.status !== 'paused') return false;
+    state.session.status = 'active';
+    this.store.setState(sessionId, state);
+    this.start(sessionId);
+    console.log(`[GameLoop] Resumed session ${sessionId}`);
+    return true;
+  }
+
+  isPaused(sessionId: string): boolean {
+    const state = this.store.getState(sessionId);
+    return state?.session.status === 'paused';
+  }
+
   stopAll(): void {
     for (const [sid] of this.intervals) {
       this.stop(sid);
@@ -94,6 +123,19 @@ export class GameLoop {
       });
       console.log(`[GameLoop] Action ${queued.action.type} by ${queued.countryCode}: ${result.success ? 'OK' : result.message}`);
     }
+
+    // 0.5. Resource tick (cross-country: production, trade flows, deficits, prices)
+    const resourceResult = processResourceTick(state);
+    state.resourceMarket = resourceResult.resourceMarket;
+    newEvents.push(...resourceResult.events);
+
+    // 0.6. Intelligence tick (spy ops, counterintel, disinfo)
+    const intelResult = processIntelTick(state);
+    newEvents.push(...intelResult.events);
+
+    // 0.7. Technology tick
+    const techResult = processTechTick(state);
+    newEvents.push(...techResult.events);
 
     // Process each country
     for (const [code, country] of Object.entries(state.countries)) {
@@ -184,6 +226,8 @@ export class GameLoop {
         stability: country.stability,
         approval: country.approval,
         indexOfPower: country.indexOfPower,
+        intel: country.intel ? { ...country.intel } : undefined,
+        tech: country.tech ? { ...country.tech } : undefined,
       };
     }
 
@@ -210,15 +254,51 @@ export class GameLoop {
       state.events = state.events.slice(-100);
     }
 
-    const delta: GameStateDelta = {
-      tick,
-      countries: countryDeltas,
-      events: newEvents.length > 0 ? newEvents : undefined,
-      tensionIndex: state.tensionIndex,
-    };
-
     this.store.setState(sessionId, state);
-    this.store.broadcastDelta(sessionId, delta);
+
+    // Per-player fog: each player sees fogged data for other countries
+    const playerConns = getPlayerConnections(sessionId);
+    for (const { playerId, countryCode } of playerConns) {
+      const playerIntel = countryCode ? state.countries[countryCode]?.intel : undefined;
+      const foggedDeltas: Record<string, Partial<CountryState>> = {};
+
+      for (const [code, changes] of Object.entries(countryDeltas)) {
+        if (code === countryCode) {
+          // Own country: full data
+          foggedDeltas[code] = changes;
+        } else {
+          // Other countries: apply fog
+          const realCountry = state.countries[code];
+          if (realCountry) {
+            const fogged = applyFog(realCountry, playerIntel, countryCode ?? '');
+            foggedDeltas[code] = {
+              economy: { ...fogged.economy },
+              stability: fogged.stability,
+              approval: fogged.approval,
+              indexOfPower: fogged.indexOfPower,
+            };
+          }
+        }
+      }
+
+      // Filter events: hide intel events not involving this player
+      const playerEvents = newEvents.filter(e => {
+        if (e.type === 'spy_caught' || e.type === 'spy_success' || e.type === 'intel_breakthrough') {
+          return e.involvedCountries.includes(countryCode ?? '');
+        }
+        return true; // all other events are public
+      });
+
+      const playerDelta: GameStateDelta = {
+        tick,
+        countries: foggedDeltas,
+        events: playerEvents.length > 0 ? playerEvents : undefined,
+        tensionIndex: state.tensionIndex,
+        resourceMarket: state.resourceMarket,
+      };
+
+      sendToPlayer(playerId, { type: 'state_delta', payload: playerDelta });
+    }
   }
 }
 

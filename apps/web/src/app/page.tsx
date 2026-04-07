@@ -25,6 +25,7 @@ export default function Home() {
     connected,
     setSelectedCountry,
     sendAction,
+    togglePause,
     playerId,
   } = useGameStore();
 
@@ -149,7 +150,7 @@ export default function Home() {
         onlinePlayers={playerCount}
         currentTick={currentTick}
         isPaused={isPaused}
-        onTogglePause={() => {}}
+        onTogglePause={togglePause}
       />
 
       <main className="flex-1 flex overflow-hidden">
@@ -207,6 +208,9 @@ export default function Home() {
         targetCountryCode={selectedCountryCode}
         playerCountryCode={playerCountryCode}
         isGameActive={gameState?.session.status === 'active'}
+        hasSanctions={!!playerCountryCode && !!gameState?.relations.some(
+          r => r.toCountry === playerCountryCode && r.type === 'sanction' && r.status === 'active'
+        )}
       />
 
       <ActionToast />

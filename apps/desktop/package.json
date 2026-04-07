@@ -1,0 +1,94 @@
+{
+  "name": "@conflict-game/desktop",
+  "version": "0.1.0",
+  "description": "Conflict.Game - Geopolitical MMO Strategy",
+  "author": "Conflict.Game Team",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build:server": "cd ../server && npm run build",
+    "build:web": "cd ../web && npm run build",
+    "build:all": "npm run build:server && npm run build:web",
+    "dist:mac": "npm run build:all && electron-builder --mac",
+    "dist:win": "npm run build:all && electron-builder --win",
+    "dist": "npm run build:all && electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "game.conflict.app",
+    "productName": "Conflict.Game",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../server/dist",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../server/node_modules",
+        "to": "server-modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../node_modules",
+        "to": "root-modules",
+        "filter": ["fastify/**", "ws/**", "pino/**", "@fastify/**", "drizzle-orm/**"]
+      },
+      {
+        "from": "../web/.next",
+        "to": "web/.next",
+        "filter": ["**/*", "!dev/**", "!cache/**"]
+      },
+      {
+        "from": "../web/public",
+        "to": "web/public",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../web/package.json",
+        "to": "web/package.json"
+      },
+      {
+        "from": "../web/next.config.ts",
+        "to": "web/next.config.ts"
+      },
+      {
+        "from": "../../node_modules",
+        "to": "node_modules",
+        "filter": ["next/**", "react/**", "react-dom/**", "@next/**", "scheduler/**"]
+      },
+      {
+        "from": "../../packages",
+        "to": "packages",
+        "filter": ["**/*.ts", "**/*.js", "**/package.json"]
+      }
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "icon": null,
+      "category": "public.app-category.games",
+      "identity": null
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": null
+    },
+    "dmg": {
+      "title": "Conflict.Game"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  },
+  "devDependencies": {
+    "electron": "35.7.5",
+    "electron-builder": "^26.0.0"
+  }
+}

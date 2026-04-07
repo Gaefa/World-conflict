@@ -1,4 +1,4 @@
-import type { CountryState } from './country.js';
+import type { CountryState, ResourceType, ProcessingChain } from './country.js';
 import type { Army } from './military.js';
 import type { DiplomaticRelation } from './diplomacy.js';
 import type { GameEvent } from './events.js';
@@ -45,6 +45,12 @@ export interface Player {
   joinedAt: string;
 }
 
+export interface ResourceMarket {
+  prices: Record<string, number>;        // ResourceType → $/unit (base=100)
+  globalSupply: Record<string, number>;  // ResourceType → total production
+  globalDemand: Record<string, number>;  // ResourceType → total consumption
+}
+
 export interface GameState {
   session: GameSession;
   players: Player[];
@@ -53,6 +59,8 @@ export interface GameState {
   relations: DiplomaticRelation[];
   events: GameEvent[];
   tensionIndex: number;         // 0-100 global tension
+  resourceMarket: ResourceMarket;
+  processingChains: ProcessingChain[];   // global registry of processing recipes
 }
 
 export interface GameStateDelta {
@@ -63,6 +71,7 @@ export interface GameStateDelta {
   events?: GameEvent[];
   tensionIndex?: number;
   removedArmyIds?: string[];
+  resourceMarket?: ResourceMarket;
 }
 
 export interface ArmyDelta {

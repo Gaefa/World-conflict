@@ -1,7 +1,9 @@
-export type * from './country.js';
-export type * from './game.js';
-export type * from './military.js';
-export type * from './diplomacy.js';
-export type * from './events.js';
-export type * from './actions.js';
+export * from './country.js';
+export * from './game.js';
+export * from './military.js';
+export * from './diplomacy.js';
+export * from './events.js';
+export * from './actions.js';
+export * from './intelligence.js';
+export * from './technology.js';
 export type * from './ws-messages.js';

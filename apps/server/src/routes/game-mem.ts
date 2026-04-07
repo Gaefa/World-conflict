@@ -2,15 +2,38 @@ import type { FastifyPluginAsync } from 'fastify';
 import { SEED_COUNTRIES } from '../db/seed-countries.js';
 import { GameLoop, InMemoryGameStateStore } from '../game/loop.js';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
-import type { GameState, GameSettings, CountryState } from '@conflict-game/shared-types';
-import { calculateIndexOfPower } from '@conflict-game/game-logic';
-import { setStateResolver } from '../ws/handler.js';
+import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
+import { defaultTechBonuses } from '@conflict-game/shared-types';
+import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses } from '@conflict-game/game-logic';
+
+/** Default intelligence state for a new country */
+function defaultIntel(): IntelligenceState {
+  return {
+    intelBudget: 0,
+    counterIntel: 20,
+    disinfo: [],
+    sigintActive: false,
+    dossiers: {},
+  };
+}
+/** Default tech state based on country's starting techLevel */
+function defaultTech(techLevel: number): TechnologyState {
+  const researchedTechs = getStartingTechs(techLevel);
+  return {
+    researchedTechs,
+    activeResearch: null,
+    bonuses: computeTechBonuses(researchedTechs),
+  };
+}
+
+import { setStateResolver, setGameLoopRef } from '../ws/handler.js';
 
 const store = new InMemoryGameStateStore();
 const gameLoop = new GameLoop(store);
 
-// Let WS handler look up game state for player→country mapping
+// Let WS handler look up game state and game loop for pause/resume
 setStateResolver((sessionId) => store.getState(sessionId));
+setGameLoopRef(gameLoop);
 
 export { gameLoop, store };
 
@@ -46,7 +69,7 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
     // This allows diplomacy, war, trade with any country
     const countries: Record<string, CountryState> = {};
     for (const seedCountry of SEED_COUNTRIES) {
-      const state = { ...seedCountry.startingState };
+      const state = { ...seedCountry.startingState, intel: defaultIntel(), tech: defaultTech(seedCountry.startingState.techLevel) };
       state.indexOfPower = calculateIndexOfPower(state);
       countries[seedCountry.code] = state;
     }
@@ -82,6 +105,8 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
       relations: [],
       events: [],
       tensionIndex: 20,
+      resourceMarket: { prices: {}, globalSupply: {}, globalDemand: {} },
+      processingChains: PROCESSING_CHAINS,
     };
 
     store.setState(sessionId, gameState);

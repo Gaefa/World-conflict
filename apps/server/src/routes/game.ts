@@ -5,6 +5,7 @@ import { gameSessions, players, countryStates, gameEvents } from '../db/schema.j
 import { SEED_COUNTRIES } from '../db/seed-countries.js';
 import { GameLoop, InMemoryGameStateStore } from '../game/loop.js';
 import type { GameState, GameSettings, CountryState } from '@conflict-game/shared-types';
+import { PROCESSING_CHAINS } from '@conflict-game/game-logic';
 
 // Shared game loop instance (single-process, Phase 1 architecture)
 const store = new InMemoryGameStateStore();
@@ -99,6 +100,8 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
       relations: [],
       events: [],
       tensionIndex: 20,
+      resourceMarket: { prices: {}, globalSupply: {}, globalDemand: {} },
+      processingChains: PROCESSING_CHAINS,
     };
 
     store.setState(sessionId, gameState);

@@ -1,3 +1,6 @@
+import type { ResourceType } from './country.js';
+import type { SpyOpType, RevealedCategories } from './intelligence.js';
+
 /** All possible player actions sent to the server */
 export type PlayerAction =
   | MoveArmyAction
@@ -7,6 +10,7 @@ export type PlayerAction =
   | ProposeAllianceAction
   | ProposeSanctionAction
   | ProposeTradeAction
+  | CounterTradeAction
   | SetTaxRateAction
   | AllocateBudgetAction
   | ResearchTechAction
@@ -28,7 +32,19 @@ export type PlayerAction =
   // Arms
   | ArmsDealAction
   // Sanction evasion
-  | SanctionEvasionAction;
+  | SanctionEvasionAction
+  // Resource system (v0.2)
+  | SmuggleAction
+  | ResourceTheftAction
+  | BuildStockpileAction
+  | ManipulatePriceAction
+  // Intelligence (v0.3)
+  | LaunchSpyOpAction
+  | BoostCounterIntelAction
+  | LaunchDisinfoAction
+  | SetIntelBudgetAction
+  // Tech tree (v0.4)
+  | CancelResearchAction;
 
 // ── Existing actions ──
 
@@ -68,12 +84,30 @@ export interface ProposeSanctionAction {
   targetCountry: string;
 }
 
+// ── Trade (Civ 5-7 style) ──
+
+export interface TradeItem {
+  resource: ResourceType;
+  amount: number;          // units/month
+  priceModifier?: number;  // 0.5 = 50% discount, 1.5 = 50% markup. Default 1.0 (market price)
+}
+
 export interface ProposeTradeAction {
   type: 'propose_trade';
   targetCountry: string;
-  resource: string;
-  amount: number;
+  offers: TradeItem[];     // what you give
+  requests: TradeItem[];   // what you want
+  duration?: number;       // months, default 12
 }
+
+export interface CounterTradeAction {
+  type: 'counter_trade';
+  relationId: string;      // ID of pending trade_agreement
+  offers: TradeItem[];
+  requests: TradeItem[];
+}
+
+// ── Economy ──
 
 export interface SetTaxRateAction {
   type: 'set_tax_rate';
@@ -88,7 +122,12 @@ export interface AllocateBudgetAction {
 
 export interface ResearchTechAction {
   type: 'research_tech';
-  category: 'military' | 'economy' | 'cyber' | 'space';
+  category?: 'military' | 'economy' | 'cyber' | 'space'; // v0.1 legacy (ignored if techId set)
+  techId?: string;                                         // v0.4 specific tech
+}
+
+export interface CancelResearchAction {
+  type: 'cancel_research';
 }
 
 export interface AcceptProposalAction {
@@ -106,13 +145,13 @@ export interface RejectProposalAction {
 export interface AirstrikeAction {
   type: 'airstrike';
   targetCountry: string;
-  intensity: 'surgical' | 'conventional' | 'carpet';  // масштаб удара
+  intensity: 'surgical' | 'conventional' | 'carpet';
 }
 
 export interface InvasionAction {
   type: 'invasion';
   targetCountry: string;
-  committedForces: number;  // % от армии (0.1 - 1.0)
+  committedForces: number;  // % of army (0.1 - 1.0)
 }
 
 export interface NavalBlockadeAction {
@@ -125,7 +164,7 @@ export interface NavalBlockadeAction {
 export interface ProxyWarAction {
   type: 'proxy_war';
   targetCountry: string;
-  funding: number;  // $B вложено в повстанцев
+  funding: number;  // $B
 }
 
 export interface InciteRebellionAction {
@@ -160,8 +199,8 @@ export interface PropagandaAction {
 
 export interface FalseFlagAction {
   type: 'false_flag';
-  targetCountry: string;       // кого атакуем
-  framedCountry: string;       // на кого вешаем
+  targetCountry: string;
+  framedCountry: string;
   operation: 'terrorist_attack' | 'border_incident' | 'cyber_attack';
 }
 
@@ -178,6 +217,69 @@ export interface ArmsDealAction {
 export interface SanctionEvasionAction {
   type: 'sanction_evasion';
   method: 'shadow_fleet' | 'crypto_bypass' | 'parallel_import' | 'import_substitution';
+}
+
+// ── Resource system (v0.2) ──
+
+/** Contraband — bypasses sanctions but risky */
+export interface SmuggleAction {
+  type: 'smuggle';
+  targetCountry: string;
+  resource: ResourceType;
+  amount: number;
+  method: 'land_border' | 'sea_route' | 'intermediary_country' | 'diplomatic_pouch';
+}
+
+/** Resource theft — cyber siphon, piracy, illegal mining, pipeline tapping */
+export interface ResourceTheftAction {
+  type: 'resource_theft';
+  targetCountry: string;
+  resource: ResourceType;
+  method: 'cyber_siphon' | 'piracy' | 'illegal_mining' | 'pipeline_tap';
+}
+
+/** Build strategic reserve for a resource */
+export interface BuildStockpileAction {
+  type: 'build_stockpile';
+  resource: ResourceType;
+  months: number; // 1-12
+}
+
+/** OPEC-style price manipulation */
+export interface ManipulatePriceAction {
+  type: 'manipulate_price';
+  resource: ResourceType;
+  direction: 'increase' | 'decrease';
+  method: 'production_cut' | 'dump_stockpile' | 'cartel_coordination';
+}
+
+// ── Intelligence (v0.3) ──
+
+/** Launch a spy operation against a target country */
+export interface LaunchSpyOpAction {
+  type: 'launch_spy_op';
+  targetCountry: string;
+  opType: SpyOpType;
+}
+
+/** Boost counterintelligence (makes it harder for others to spy on you) */
+export interface BoostCounterIntelAction {
+  type: 'boost_counter_intel';
+  amount: number; // $B to invest
+}
+
+/** Launch disinformation campaign (fake data about yourself) */
+export interface LaunchDisinfoAction {
+  type: 'launch_disinfo';
+  category: keyof RevealedCategories;
+  multiplier: number; // e.g. 1.5 = appear 50% stronger, 0.7 = appear weaker
+  duration: number;   // months
+}
+
+/** Set ongoing intelligence budget allocation */
+export interface SetIntelBudgetAction {
+  type: 'set_intel_budget';
+  budget: number; // $B per tick
 }
 
 // ── Result types ──

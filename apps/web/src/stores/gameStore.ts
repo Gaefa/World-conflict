@@ -3,8 +3,8 @@
 import { create } from 'zustand';
 import type { GameState, GameStateDelta, PlayerAction, ActionResult } from '@conflict-game/shared-types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/ws';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3002/ws';
 
 interface GameStore {
   // Connection
@@ -32,6 +32,7 @@ interface GameStore {
   disconnectWebSocket: () => void;
   setSelectedCountry: (code: string | null) => void;
   sendAction: (action: PlayerAction) => void;
+  togglePause: () => void;
   applyDelta: (delta: GameStateDelta) => void;
 }
 
@@ -127,6 +128,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
               console.warn(`Action failed: ${msg.payload.message}`);
             }
             break;
+          case 'session_status':
+            if (msg.payload.status === 'paused') set({ isPaused: true });
+            if (msg.payload.status === 'resumed') set({ isPaused: false });
+            break;
           case 'game_event':
             // Append event to game state
             const { gameState: gs } = get();
@@ -169,6 +174,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
     ws.send(JSON.stringify({ type: 'player_action', payload: action }));
+  },
+
+  togglePause: () => {
+    const { ws, connected } = get();
+    if (!ws || !connected) return;
+    ws.send(JSON.stringify({ type: 'toggle_pause' }));
   },
 
   applyDelta: (delta: GameStateDelta) => {

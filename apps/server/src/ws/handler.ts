@@ -2,6 +2,14 @@ import type { FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import type { ClientMessage, ServerMessage, GameState } from '@conflict-game/shared-types';
 import { enqueueAction } from '../game/action-queue.js';
+import type { GameLoop } from '../game/loop.js';
+
+/** Resolver to look up game loop — set by game-mem.ts on startup */
+let gameLoopRef: GameLoop | null = null;
+
+export function setGameLoopRef(loop: GameLoop): void {
+  gameLoopRef = loop;
+}
 
 /** Resolver to look up game state — set by game-mem.ts on startup */
 let stateResolver: ((sessionId: string) => GameState | null) | null = null;
@@ -110,6 +118,25 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
           });
           break;
 
+        case 'toggle_pause': {
+          if (!sessionId || !gameLoopRef) break;
+          const paused = gameLoopRef.isPaused(sessionId);
+          if (paused) {
+            gameLoopRef.resume(sessionId);
+            broadcastToSession(sessionId, {
+              type: 'session_status',
+              payload: { status: 'resumed', message: 'Game resumed' },
+            });
+          } else {
+            gameLoopRef.pause(sessionId);
+            broadcastToSession(sessionId, {
+              type: 'session_status',
+              payload: { status: 'paused', message: 'Game paused' },
+            });
+          }
+          break;
+        }
+
         case 'ready':
           break;
 
@@ -156,4 +183,15 @@ export function getConnectionCount(sessionId: string): number {
     if (conn.sessionId === sessionId) count++;
   }
   return count;
+}
+
+/** Get all player connections for a session (for per-player fog broadcasts) */
+export function getPlayerConnections(sessionId: string): { playerId: string; countryCode: string | null }[] {
+  const result: { playerId: string; countryCode: string | null }[] = [];
+  for (const [pid, conn] of connections) {
+    if (conn.sessionId === sessionId) {
+      result.push({ playerId: pid, countryCode: conn.countryCode });
+    }
+  }
+  return result;
 }

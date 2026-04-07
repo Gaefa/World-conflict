@@ -10,6 +10,7 @@ export type ClientMessage =
   | { type: 'chat_message'; payload: { text: string; channel: 'global' | 'alliance' } }
   | { type: 'select_country'; payload: { countryCode: string } }
   | { type: 'ready'; payload: { ready: boolean } }
+  | { type: 'toggle_pause' }
   | { type: 'ping' };
 
 /** Messages from server to client */

@@ -5,8 +5,10 @@ import type {
   GameState,
   CountryState,
   DiplomaticRelation,
+  SpyOpType,
 } from '@conflict-game/shared-types';
-import { recruitmentCost } from '@conflict-game/game-logic';
+import { SPY_OP_CONFIG, TECH_TREE, defaultTechBonuses } from '@conflict-game/shared-types';
+import { recruitmentCost, canResearchTech, computeTechBonuses } from '@conflict-game/game-logic';
 
 /**
  * Process a player action against the current game state.
@@ -30,7 +32,9 @@ export function processAction(
       return processAllocateBudget(country, action.category, action.amount, action);
 
     case 'research_tech':
-      return processResearchTech(country, action.category, action);
+      return processResearchTechV2(state, country, action);
+    case 'cancel_research':
+      return processCancelResearch(country, action);
 
     case 'declare_war':
       return processDeclareWar(state, playerCountryCode, action.targetCountry, action);
@@ -90,6 +94,28 @@ export function processAction(
     // ── Sanction evasion ──
     case 'sanction_evasion':
       return processSanctionEvasion(state, country, playerCountryCode, action);
+
+    // ── Resource system (v0.2) ──
+    case 'smuggle':
+      return processSmuggle(state, country, playerCountryCode, action);
+    case 'resource_theft':
+      return processResourceTheft(state, country, playerCountryCode, action);
+    case 'build_stockpile':
+      return processBuildStockpile(state, country, playerCountryCode, action);
+    case 'manipulate_price':
+      return processManipulatePrice(state, country, playerCountryCode, action);
+    case 'counter_trade':
+      return fail(action, 'Counter trade not yet implemented');
+
+    // Intelligence (v0.3)
+    case 'launch_spy_op':
+      return processLaunchSpyOp(state, country, playerCountryCode, action);
+    case 'boost_counter_intel':
+      return processBoostCounterIntel(country, action);
+    case 'launch_disinfo':
+      return processLaunchDisinfo(state, country, action);
+    case 'set_intel_budget':
+      return processSetIntelBudget(country, action);
 
     default:
       return fail(action, 'Unknown action type');
@@ -167,48 +193,81 @@ function processAllocateBudget(
   return { success: true, action, message: `$${amount.toFixed(1)}B allocated to ${category}`, effects };
 }
 
-function processResearchTech(
+function processResearchTechV2(
+  state: GameState,
   country: CountryState,
-  category: 'military' | 'economy' | 'cyber' | 'space',
-  action: PlayerAction,
+  action: PlayerAction & { type: 'research_tech' },
 ): ActionResult {
-  const cost = 10;
-  if (country.economy.budget < cost) {
-    return fail(action, `Insufficient budget. Need $${cost}B, have $${country.economy.budget.toFixed(1)}B`);
+  const techId = action.techId;
+  if (!techId) return fail(action, 'No techId specified');
+
+  const techDef = TECH_TREE[techId];
+  if (!techDef) return fail(action, `Unknown technology: ${techId}`);
+
+  // Initialize tech state if needed
+  if (!country.tech) {
+    country.tech = { researchedTechs: [], activeResearch: null, bonuses: defaultTechBonuses() };
   }
 
-  country.economy.budget -= cost;
+  // Check not already researching
+  if (country.tech.activeResearch) {
+    return fail(action, `Already researching: ${TECH_TREE[country.tech.activeResearch.techId]?.name ?? country.tech.activeResearch.techId}`);
+  }
+
+  // Check prerequisites
+  if (!canResearchTech(country.tech, techId)) {
+    const missing = techDef.prerequisites.filter(p => !country.tech!.researchedTechs.includes(p));
+    const missingNames = missing.map(p => TECH_TREE[p]?.name ?? p).join(', ');
+    return fail(action, `Prerequisites not met: ${missingNames}`);
+  }
+
+  // Check budget
+  if (country.economy.budget < techDef.cost) {
+    return fail(action, `Insufficient budget: need $${techDef.cost}B, have $${country.economy.budget.toFixed(1)}B`);
+  }
+
+  // Deduct cost, start research
+  country.economy.budget -= techDef.cost;
+  country.tech.activeResearch = {
+    techId,
+    startedTick: state.session.currentTick,
+    ticksRemaining: techDef.researchTicks,
+    totalTicks: techDef.researchTicks,
+    investedCost: techDef.cost,
+  };
 
   const effects: ActionEffect[] = [
-    { description: `Budget: -$${cost}B`, known: true, value: `-$${cost}B` },
+    { description: `Researching: ${techDef.name}`, known: true },
+    { description: `Cost: $${techDef.cost}B`, known: true, value: `-$${techDef.cost}B` },
+    { description: `Duration: ${techDef.researchTicks} months`, known: true },
+    ...techDef.effects.map(e => ({ description: e.description, known: false })),
   ];
 
-  const techGain = 0.3 + Math.random() * 0.2;
-  country.techLevel = Math.min(10, country.techLevel + techGain);
-  effects.push({ description: `Tech level +${techGain.toFixed(2)}`, known: true });
+  return { success: true, action, message: `Research started: ${techDef.name}`, effects };
+}
 
-  switch (category) {
-    case 'military':
-      country.military.techLevel = Math.min(10, country.military.techLevel + techGain);
-      effects.push({ description: 'Military tech improved', known: true });
-      effects.push({ description: 'New weapon systems may become available', known: false });
-      break;
-    case 'economy':
-      country.economy.gdpGrowth += 0.5;
-      effects.push({ description: 'GDP growth +0.5%', known: true });
-      break;
-    case 'cyber':
-      effects.push({ description: 'Cyber capabilities enhanced', known: true });
-      effects.push({ description: 'Intelligence operations improved', known: false });
-      break;
-    case 'space':
-      country.diplomaticInfluence = Math.min(100, country.diplomaticInfluence + 2);
-      effects.push({ description: 'Diplomatic influence +2', known: true });
-      effects.push({ description: 'Global prestige increased', known: false });
-      break;
+function processCancelResearch(
+  country: CountryState,
+  action: PlayerAction,
+): ActionResult {
+  if (!country.tech?.activeResearch) {
+    return fail(action, 'No active research to cancel');
   }
 
-  return { success: true, action, message: `${category} research initiated`, effects };
+  const { techId, investedCost } = country.tech.activeResearch;
+  const techDef = TECH_TREE[techId];
+  const refund = Math.floor(investedCost * 0.5);
+
+  country.economy.budget += refund;
+  country.tech.activeResearch = null;
+
+  return {
+    success: true, action,
+    message: `Research cancelled: ${techDef?.name ?? techId}`,
+    effects: [
+      { description: `Refunded: $${refund}B (50%)`, known: true, value: `+$${refund}B` },
+    ],
+  };
 }
 
 function makeDipRelation(
@@ -386,21 +445,60 @@ function processProposeTrade(
   const from = state.countries[fromCode];
   if (from.diplomaticInfluence < 2) return fail(action, 'Insufficient diplomatic influence (need 2)');
 
-  from.diplomaticInfluence -= 2;
-  state.relations.push(makeDipRelation(state, 'trade_agreement', fromCode, targetCode));
+  // Check no active sanctions/war between parties
+  const blocked = state.relations.some(r =>
+    r.status === 'active' &&
+    (r.type === 'sanction' || r.type === 'war') &&
+    ((r.fromCountry === fromCode && r.toCountry === targetCode) ||
+     (r.fromCountry === targetCode && r.toCountry === fromCode))
+  );
+  if (blocked) return fail(action, 'Cannot trade — active sanctions or war');
 
-  from.economy.gdpGrowth += 0.3;
-  state.countries[targetCode].economy.gdpGrowth += 0.3;
-  from.economy.tradeBalance += 5;
+  from.diplomaticInfluence -= 2;
+
+  // Build trade flows from offers/requests (Civ-style)
+  const tradeAction = action as { offers?: any[]; requests?: any[]; duration?: number };
+  const tradeFlows: any[] = [];
+
+  if (tradeAction.offers) {
+    for (const offer of tradeAction.offers) {
+      tradeFlows.push({
+        resource: offer.resource,
+        amountPerTick: offer.amount,
+        direction: 'from_to' as const,
+        priceModifier: offer.priceModifier ?? 1.0,
+      });
+    }
+  }
+  if (tradeAction.requests) {
+    for (const req of tradeAction.requests) {
+      tradeFlows.push({
+        resource: req.resource,
+        amountPerTick: req.amount,
+        direction: 'to_from' as const,
+        priceModifier: req.priceModifier ?? 1.0,
+      });
+    }
+  }
+
+  const duration = tradeAction.duration ?? 12;
+  const relation = makeDipRelation(state, 'trade_agreement', fromCode, targetCode);
+  relation.expiresAtTick = state.session.currentTick + duration;
+  (relation as any).tradeFlows = tradeFlows;
+  state.relations.push(relation);
+
+  const flowDesc = tradeFlows.length > 0
+    ? tradeFlows.map((f: any) => `${f.resource} x${f.amountPerTick}/mo`).join(', ')
+    : 'general trade';
 
   return {
     success: true, action,
-    message: `Trade agreement with ${targetCode}`,
+    message: `Trade agreement with ${targetCode}: ${flowDesc}`,
     effects: [
       { description: 'Diplomatic influence -2', known: true, value: '-2' },
-      { description: 'GDP growth +0.3%', known: true },
-      { description: 'Trade balance +$5B', known: true },
-      { description: 'Economic ties strengthened', known: false },
+      { description: `Trade flows: ${flowDesc}`, known: true },
+      { description: `Duration: ${duration} months`, known: true },
+      { description: 'Resources will flow via resource tick', known: false },
     ],
   };
 }
@@ -677,12 +775,15 @@ function processNavalBlockade(
   if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
 
   from.economy.budget -= cost;
-  from.military.navy -= 2; // commitment
+  from.military.navy -= 2; // committed vessels
 
-  // Blockade effects — strangle trade
-  target.economy.tradeBalance -= 15;
-  target.economy.gdpGrowth -= 1.5;
-  target.stability = clamp(target.stability - 5, 0, 100);
+  // Create a naval_blockade relation — resource tick will disrupt all sea trade flows
+  const relation = makeDipRelation(state, 'naval_blockade' as any, fromCode, action.targetCountry);
+  relation.expiresAtTick = state.session.currentTick + 6; // lasts 6 months
+  state.relations.push(relation);
+
+  // Immediate stability hit
+  target.stability = clamp(target.stability - 3, 0, 100);
 
   if (!isAtWar(state, fromCode, action.targetCountry)) {
     from.diplomaticInfluence = clamp(from.diplomaticInfluence - 10, 0, 100);
@@ -690,18 +791,18 @@ function processNavalBlockade(
 
   addEvent(state, 'military_incident',
     `Naval blockade of ${action.targetCountry}`,
-    `${fromCode} has established a naval blockade of ${action.targetCountry}.`,
+    `${fromCode} has established a naval blockade of ${action.targetCountry}. All trade routes disrupted.`,
     'high', [fromCode, action.targetCountry]);
 
   return {
     success: true, action,
-    message: `Naval blockade of ${action.targetCountry} established`,
+    message: `Naval blockade of ${action.targetCountry} — trade routes disrupted`,
     effects: [
       { description: `Budget -$${cost}B`, known: true },
-      { description: 'Target trade balance -$15B', known: true },
-      { description: 'Target GDP growth -1.5%', known: true },
-      { description: 'Target stability -5', known: true },
-      { description: 'Blockade runners may attempt breach', known: false },
+      { description: 'All trade with target disrupted', known: true },
+      { description: 'Target stability -3', known: true },
+      { description: 'Blockade lasts 6 months', known: true },
+      { description: 'Resource prices may spike globally', known: false },
       { description: 'Humanitarian crisis risk', known: false },
     ],
   };
@@ -1252,6 +1353,442 @@ function processSanctionEvasion(
       { description: 'Long-term effectiveness may vary', known: false },
     ],
   };
+}
+
+// ── Resource system actions (v0.2) ──
+
+function processSmuggle(
+  state: GameState, from: CountryState, fromCode: string,
+  action: PlayerAction & { type: 'smuggle' },
+): ActionResult {
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not in game');
+
+  const methodCosts: Record<string, number> = {
+    land_border: 2, sea_route: 4, intermediary_country: 6, diplomatic_pouch: 1,
+  };
+  const detectionChances: Record<string, number> = {
+    land_border: 0.15, sea_route: 0.25, intermediary_country: 0.10, diplomatic_pouch: 0.05,
+  };
+  const maxAmounts: Record<string, number> = {
+    land_border: 10, sea_route: 20, intermediary_country: 15, diplomatic_pouch: 2,
+  };
+
+  const cost = methodCosts[action.method] ?? 3;
+  if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
+
+  const amount = Math.min(action.amount, maxAmounts[action.method] ?? 10);
+  const detection = detectionChances[action.method] ?? 0.2;
+
+  from.economy.budget -= cost;
+
+  // Create smuggle route as relation
+  const relation = makeDipRelation(state, 'smuggle_route' as any, fromCode, action.targetCountry);
+  relation.expiresAtTick = state.session.currentTick + 6;
+  (relation as any).tradeFlows = [{
+    resource: action.resource,
+    amountPerTick: amount,
+    direction: 'to_from' as const, // target exports to player
+    priceModifier: 0.7, // contraband is cheaper
+  }];
+  (relation as any).smuggleMethod = action.method;
+  (relation as any).smuggleDetectionChance = detection;
+  state.relations.push(relation);
+
+  return {
+    success: true, action,
+    message: `Contraband route for ${action.resource} established with ${action.targetCountry}`,
+    effects: [
+      { description: `Budget -$${cost}B`, known: true },
+      { description: `${action.resource} x${amount}/mo via ${action.method}`, known: true },
+      { description: `Detection risk: ${(detection * 100).toFixed(0)}%/month`, known: true },
+      { description: 'Bypasses sanctions', known: true },
+      { description: 'Diplomatic scandal if discovered', known: false },
+    ],
+  };
+}
+
+function processResourceTheft(
+  state: GameState, from: CountryState, fromCode: string,
+  action: PlayerAction & { type: 'resource_theft' },
+): ActionResult {
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not in game');
+
+  const methodConfig: Record<string, { cost: number; risk: number; amount: number; techReq: number }> = {
+    cyber_siphon: { cost: 5, risk: 0.30, amount: 5, techReq: 7 },
+    piracy: { cost: 3, risk: 0.20, amount: 8, techReq: 3 },
+    illegal_mining: { cost: 2, risk: 0.10, amount: 3, techReq: 3 },
+    pipeline_tap: { cost: 4, risk: 0.25, amount: 10, techReq: 4 },
+  };
+
+  const cfg = methodConfig[action.method];
+  if (!cfg) return fail(action, 'Unknown theft method');
+  if (from.economy.budget < cfg.cost) return fail(action, `Need $${cfg.cost}B budget`);
+  if (from.techLevel < cfg.techReq) return fail(action, `Need tech level ${cfg.techReq}+`);
+
+  from.economy.budget -= cfg.cost;
+
+  // Detection check
+  const detected = Math.random() < cfg.risk;
+
+  if (detected) {
+    from.diplomaticInfluence = clamp(from.diplomaticInfluence - 15, 0, 100);
+    target.approval = clamp(target.approval + 5, 0, 100); // rally effect
+
+    addEvent(state, 'resource_theft_detected',
+      `${fromCode} caught stealing ${action.resource} from ${action.targetCountry}`,
+      `${action.method} operation exposed. Diplomatic fallout expected.`,
+      'high', [fromCode, action.targetCountry]);
+
+    return {
+      success: false, action,
+      message: `${action.method} detected! Diplomatic scandal.`,
+      effects: [
+        { description: `Budget -$${cfg.cost}B`, known: true },
+        { description: 'Operation exposed!', known: true },
+        { description: 'Influence -15', known: true, value: '-15' },
+        { description: 'War casus belli given to target', known: true },
+      ],
+    };
+  }
+
+  // Success — steal resources
+  const targetBal = target.resourceState?.[action.resource];
+  if (targetBal) {
+    targetBal.production = Math.max(0, targetBal.production - cfg.amount * 0.5);
+  }
+
+  // Give to thief (will show up in next resource tick as production boost)
+  if (!from.resourceState) from.resourceState = {};
+  const fromBal = from.resourceState[action.resource] ?? {
+    production: 0, consumption: 0, imported: 0, exported: 0, smuggled: 0, deficit: 0, stockpile: 0,
+  };
+  fromBal.imported += cfg.amount; // treat as "imported" for this tick
+  from.resourceState[action.resource] = fromBal;
+
+  return {
+    success: true, action,
+    message: `${action.method}: stole ${cfg.amount} units of ${action.resource} from ${action.targetCountry}`,
+    effects: [
+      { description: `Budget -$${cfg.cost}B`, known: true },
+      { description: `Acquired ${cfg.amount} ${action.resource}`, known: true },
+      { description: `Target production damaged`, known: false },
+      { description: `Detection risk was ${(cfg.risk * 100).toFixed(0)}%`, known: false },
+    ],
+  };
+}
+
+function processBuildStockpile(
+  state: GameState, from: CountryState, fromCode: string,
+  action: PlayerAction & { type: 'build_stockpile' },
+): ActionResult {
+  const months = clamp(action.months, 1, 12);
+
+  if (!from.resourceState) from.resourceState = {};
+  const bal = from.resourceState[action.resource] ?? {
+    production: 0, consumption: 0, imported: 0, exported: 0, smuggled: 0, deficit: 0, stockpile: 0,
+  };
+
+  // Cost = months of consumption × price factor
+  const price = state.resourceMarket?.prices?.[action.resource] ?? 100;
+  const consumption = Math.max(1, bal.consumption);
+  const cost = months * consumption * price * 0.005; // scale down to budget units
+
+  if (from.economy.budget < cost) return fail(action, `Need $${cost.toFixed(1)}B budget`);
+  if (bal.stockpile + months > 12) return fail(action, `Max 12 months stockpile (current: ${bal.stockpile.toFixed(1)})`);
+
+  from.economy.budget -= cost;
+  bal.stockpile += months;
+  from.resourceState[action.resource] = bal;
+
+  return {
+    success: true, action,
+    message: `Built ${months}-month strategic reserve of ${action.resource}`,
+    effects: [
+      { description: `Budget -$${cost.toFixed(1)}B`, known: true },
+      { description: `${action.resource} stockpile: ${bal.stockpile.toFixed(1)} months`, known: true },
+      { description: 'Buffer against supply disruptions', known: true },
+    ],
+  };
+}
+
+function processManipulatePrice(
+  state: GameState, from: CountryState, fromCode: string,
+  action: PlayerAction & { type: 'manipulate_price' },
+): ActionResult {
+  // Check producer — need significant production capacity
+  const res = (from.resources as unknown as Record<string, number>)[action.resource] ?? 0;
+  if (res < 30) return fail(action, `Need at least 30 production capacity to manipulate ${action.resource} price (have ${res})`);
+
+  const cost = 3;
+  if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
+  from.economy.budget -= cost;
+
+  const market = state.resourceMarket;
+  const currentPrice = market.prices[action.resource] ?? 100;
+
+  switch (action.method) {
+    case 'production_cut': {
+      // Reduce own production → reduce supply → price up
+      const bal = from.resourceState?.[action.resource];
+      if (bal) bal.production *= 0.7; // cut 30%
+      // Price will adjust next tick via supply/demand
+      from.economy.tradeBalance -= 2; // short-term revenue loss
+
+      addEvent(state, 'price_manipulation',
+        `${fromCode} cuts ${action.resource} production`,
+        `Production cut expected to drive up ${action.resource} prices globally.`,
+        'medium', [fromCode]);
+
+      return {
+        success: true, action,
+        message: `Production cut: ${action.resource} output -30%`,
+        effects: [
+          { description: 'Production -30% this tick', known: true },
+          { description: 'Global price expected to rise', known: true },
+          { description: 'Short-term revenue loss', known: true },
+          { description: 'OPEC-style market influence', known: false },
+        ],
+      };
+    }
+
+    case 'dump_stockpile': {
+      const bal = from.resourceState?.[action.resource];
+      if (!bal || bal.stockpile < 1) return fail(action, 'No stockpile to dump');
+      bal.stockpile -= 1;
+      // Increase supply → price down (will process next tick)
+      bal.production += bal.consumption * 2; // temporary boost
+
+      return {
+        success: true, action,
+        message: `Dumped ${action.resource} reserves — prices should drop`,
+        effects: [
+          { description: 'Stockpile -1 month', known: true },
+          { description: 'Supply flooded — price drop expected', known: true },
+          { description: 'Competitors may suffer', known: false },
+        ],
+      };
+    }
+
+    case 'cartel_coordination': {
+      // Need alliance with other producers
+      const allies = state.relations.filter(r =>
+        r.type === 'alliance' && r.status === 'active' &&
+        (r.fromCountry === fromCode || r.toCountry === fromCode)
+      );
+      if (allies.length === 0) return fail(action, 'Need at least one allied country for cartel');
+
+      // Reduce all allied producers' output
+      for (const ally of allies) {
+        const allyCode = ally.fromCountry === fromCode ? ally.toCountry : ally.fromCountry;
+        const allyCountry = state.countries[allyCode];
+        if (!allyCountry) continue;
+        const allyRes = (allyCountry.resources as unknown as Record<string, number>)[action.resource] ?? 0;
+        if (allyRes > 20) {
+          const allyBal = allyCountry.resourceState?.[action.resource];
+          if (allyBal) allyBal.production *= 0.8; // 20% cut
+        }
+      }
+
+      // Own cut
+      const bal = from.resourceState?.[action.resource];
+      if (bal) bal.production *= 0.8;
+
+      addEvent(state, 'price_manipulation',
+        `${fromCode} coordinates ${action.resource} cartel`,
+        `Cartel formed to manipulate ${action.resource} prices. Multiple producers cutting output.`,
+        'high', [fromCode]);
+
+      return {
+        success: true, action,
+        message: `Cartel coordination: ${action.resource} — all producers cut 20%`,
+        effects: [
+          { description: 'Cartel production cuts', known: true },
+          { description: 'Major price spike expected', known: true },
+          { description: 'Importers will suffer', known: false },
+          { description: 'Cartel may fracture', known: false },
+        ],
+      };
+    }
+
+    default:
+      return fail(action, 'Unknown manipulation method');
+  }
+}
+
+// ── Intelligence action processors (v0.3) ──
+
+function processLaunchSpyOp(
+  state: GameState,
+  country: CountryState,
+  playerCountryCode: string,
+  action: PlayerAction & { type: 'launch_spy_op' },
+): ActionResult {
+  if (!country.intel) return fail(action, 'Intelligence system not initialized');
+
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not found');
+  if (action.targetCountry === playerCountryCode) return fail(action, 'Cannot spy on yourself');
+
+  const config = SPY_OP_CONFIG[action.opType];
+  if (!config) return fail(action, 'Unknown spy operation type');
+
+  // Check tech level
+  if ((country.techLevel ?? 1) < config.techRequired) {
+    return fail(action, `Requires tech level ${config.techRequired} (you have ${country.techLevel ?? 1})`);
+  }
+
+  // Check budget
+  if (country.economy.budget < config.cost) {
+    return fail(action, `Insufficient budget: need $${config.cost}B, have $${country.economy.budget.toFixed(1)}B`);
+  }
+
+  // Check max concurrent ops per target (limit 3)
+  const dossier = country.intel.dossiers[action.targetCountry];
+  if (dossier && dossier.activeOps.length >= 3) {
+    return fail(action, 'Maximum 3 concurrent operations per target');
+  }
+
+  // Deduct cost
+  country.economy.budget -= config.cost;
+
+  // Create spy operation
+  const op = {
+    id: `spy-${playerCountryCode}-${action.targetCountry}-${Date.now()}`,
+    type: action.opType,
+    targetCountry: action.targetCountry,
+    duration: config.baseDuration,
+    detectionRisk: config.detectionRisk,
+    reveals: config.reveals,
+    startedTick: state.session.currentTick,
+  };
+
+  // Ensure dossier exists
+  if (!country.intel.dossiers[action.targetCountry]) {
+    country.intel.dossiers[action.targetCountry] = {
+      level: 'none',
+      intelPoints: 0,
+      activeOps: [],
+      lastUpdated: state.session.currentTick,
+      revealed: { economy: false, military: false, resources: false, diplomacy: false, stability: false },
+    };
+  }
+  country.intel.dossiers[action.targetCountry].activeOps.push(op);
+
+  const effects: ActionEffect[] = [
+    { description: `${action.opType} operation launched against ${action.targetCountry}`, known: true },
+    { description: `Cost: $${config.cost}B`, known: true, value: `-$${config.cost}B` },
+    { description: `Duration: ${config.baseDuration} months`, known: true },
+    { description: `Detection risk: ${(config.detectionRisk * 100).toFixed(0)}% per tick`, known: true },
+    { description: 'Target counterintelligence may detect operation', known: false },
+  ];
+
+  return { success: true, action, message: `Spy operation launched`, effects };
+}
+
+function processBoostCounterIntel(
+  country: CountryState,
+  action: PlayerAction & { type: 'boost_counter_intel' },
+): ActionResult {
+  if (!country.intel) return fail(action, 'Intelligence system not initialized');
+
+  const amount = action.amount;
+  if (amount <= 0 || amount > 20) return fail(action, 'Investment must be between $1B and $20B');
+
+  if (country.economy.budget < amount) {
+    return fail(action, `Insufficient budget: need $${amount}B, have $${country.economy.budget.toFixed(1)}B`);
+  }
+
+  country.economy.budget -= amount;
+
+  // Each $1B gives +2 counterintel points, diminishing returns above 70
+  const current = country.intel.counterIntel;
+  const efficiency = current > 70 ? 0.5 : 1.0;
+  const boost = amount * 2 * efficiency;
+  country.intel.counterIntel = Math.min(100, current + boost);
+
+  const effects: ActionEffect[] = [
+    { description: `Counterintelligence: ${current.toFixed(0)} → ${country.intel.counterIntel.toFixed(0)}`, known: true, value: `+${boost.toFixed(0)}` },
+    { description: `Cost: $${amount}B`, known: true, value: `-$${amount}B` },
+    { description: 'Reduces enemy spy detection success', known: true },
+  ];
+
+  return { success: true, action, message: `Counterintelligence boosted`, effects };
+}
+
+function processLaunchDisinfo(
+  state: GameState,
+  country: CountryState,
+  action: PlayerAction & { type: 'launch_disinfo' },
+): ActionResult {
+  if (!country.intel) return fail(action, 'Intelligence system not initialized');
+
+  const { category, multiplier, duration } = action;
+
+  // Validate category
+  const validCategories = ['economy', 'military', 'resources', 'diplomacy', 'stability'];
+  if (!validCategories.includes(category)) return fail(action, `Invalid category: ${category}`);
+
+  // Validate multiplier (0.5-2.0)
+  if (multiplier < 0.5 || multiplier > 2.0) return fail(action, 'Multiplier must be between 0.5 and 2.0');
+
+  // Validate duration (1-12 months)
+  if (duration < 1 || duration > 12) return fail(action, 'Duration must be 1-12 months');
+
+  // Cost scales with duration and deviation from reality
+  const deviation = Math.abs(multiplier - 1.0);
+  const cost = deviation * duration * 3; // $3B per deviation unit per month
+  if (country.economy.budget < cost) {
+    return fail(action, `Insufficient budget: need $${cost.toFixed(1)}B`);
+  }
+
+  // Check for existing disinfo on same category
+  const existing = country.intel.disinfo.findIndex(d => d.category === category);
+  if (existing >= 0) {
+    country.intel.disinfo.splice(existing, 1); // replace
+  }
+
+  country.economy.budget -= cost;
+
+  country.intel.disinfo.push({
+    id: `disinfo-${country.code}-${category}-${Date.now()}`,
+    category,
+    multiplier,
+    duration,
+    startedTick: state.session.currentTick,
+  });
+
+  const direction = multiplier > 1 ? 'inflated' : 'deflated';
+  const effects: ActionEffect[] = [
+    { description: `${category} data will appear ${direction} by ${((multiplier - 1) * 100).toFixed(0)}%`, known: true },
+    { description: `Duration: ${duration} months`, known: true },
+    { description: `Cost: $${cost.toFixed(1)}B`, known: true, value: `-$${cost.toFixed(1)}B` },
+    { description: 'Enemy spies will see manipulated data', known: true },
+    { description: 'Effect depends on enemy intel level', known: false },
+  ];
+
+  return { success: true, action, message: `Disinformation campaign launched on ${category}`, effects };
+}
+
+function processSetIntelBudget(
+  country: CountryState,
+  action: PlayerAction & { type: 'set_intel_budget' },
+): ActionResult {
+  if (!country.intel) return fail(action, 'Intelligence system not initialized');
+
+  const budget = action.budget;
+  if (budget < 0 || budget > 50) return fail(action, 'Intel budget must be between $0B and $50B per tick');
+
+  const old = country.intel.intelBudget;
+  country.intel.intelBudget = budget;
+
+  const effects: ActionEffect[] = [
+    { description: `Intel budget: $${old.toFixed(1)}B → $${budget.toFixed(1)}B per tick`, known: true, value: `$${budget}B` },
+    { description: 'Deducted from national budget each tick', known: true },
+  ];
+
+  return { success: true, action, message: `Intelligence budget set to $${budget}B/tick`, effects };
 }
 
 function isAtWar(state: GameState, c1: string, c2: string): boolean {

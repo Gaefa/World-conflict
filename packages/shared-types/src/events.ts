@@ -26,7 +26,23 @@ export type GameEventType =
   | 'resource_discovery'
   | 'pandemic'
   | 'military_incident'
-  | 'cultural_event';
+  | 'cultural_event'
+  | 'supply_shock'
+  | 'price_spike'
+  | 'stockpile_depleted'
+  | 'trade_disrupted'
+  | 'contraband_discovered'
+  | 'resource_theft_detected'
+  | 'price_manipulation'
+  // Intelligence (v0.3)
+  | 'spy_caught'
+  | 'spy_success'
+  | 'intel_breakthrough'
+  | 'disinfo_detected'
+  | 'sigint_intercept'
+  // Tech tree (v0.4)
+  | 'tech_completed'
+  | 'tech_started';
 
 export type EventSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 

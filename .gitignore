@@ -44,3 +44,7 @@ apps/mobile/android/
 
 # Drizzle
 apps/server/drizzle/
+
+# Electron build output
+apps/desktop/release/
+apps/desktop/node_modules/
