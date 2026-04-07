@@ -1,0 +1,97 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact: "apps/desktop/release/*.dmg"
+          - os: windows-latest
+            platform: win
+            artifact: "apps/desktop/release/*.exe"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install desktop dependencies
+        run: npm install
+        working-directory: apps/desktop
+
+      - name: Build server
+        run: npx turbo run build --filter=@conflict-game/server
+
+      - name: Build web
+        run: npx turbo run build --filter=@conflict-game/web
+
+      - name: Build desktop (${{ matrix.platform }})
+        run: npx electron-builder --${{ matrix.platform }}
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conflict-game-${{ matrix.platform }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.exe
+          if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: conflict-game-mac
+          path: dist/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: conflict-game-win
+          path: dist/
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ steps.sha.outputs.short }}
+          name: "Build ${{ steps.sha.outputs.short }}"
+          body: |
+            Автоматическая сборка десктоп-приложения.
+
+            Скачай файл для своей ОС:
+            - **macOS**: `Conflict.Game-*.dmg`
+            - **Windows**: `Conflict.Game-*.exe`
+          files: dist/*
+          draft: false
+          prerelease: true
