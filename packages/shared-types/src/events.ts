@@ -42,7 +42,9 @@ export type GameEventType =
   | 'sigint_intercept'
   // Tech tree (v0.4)
   | 'tech_completed'
-  | 'tech_started';
+  | 'tech_started'
+  // Victory (v0.6)
+  | 'victory';
 
 export type EventSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 

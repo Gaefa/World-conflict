@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { useLocaleStore } from '@/stores/localeStore';
 import { useCountries } from '@/hooks/useCountries';
 
 interface CreateSessionModalProps {
@@ -17,12 +18,13 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
 
+  const { t } = useLocaleStore();
   const { createSession, selectCountry, startGame, selectedCountryCode } = useGameStore();
   const { data: countries } = useCountries();
 
   const handleCreate = async () => {
     if (!sessionName.trim() || !playerName.trim()) {
-      setError('Fill in all fields');
+      setError(t.session_fill_fields);
       return;
     }
     setLoading(true);
@@ -31,7 +33,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
       await createSession(sessionName.trim(), playerName.trim(), { allowAI: aiEnabled, aiDifficulty });
       setStep('country');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create session');
+      setError(e instanceof Error ? e.message : 'Error');
     } finally {
       setLoading(false);
     }
@@ -44,7 +46,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
       await selectCountry(code);
       setStep('ready');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to select country');
+      setError(e instanceof Error ? e.message : 'Error');
     } finally {
       setLoading(false);
     }
@@ -57,28 +59,37 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
       await startGame();
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to start game');
+      setError(e instanceof Error ? e.message : 'Error');
     } finally {
       setLoading(false);
     }
   };
 
+  const AI_LABELS = {
+    easy: t.ai_easy,
+    normal: t.ai_normal,
+    hard: t.ai_hard,
+  };
+  const AI_DESCS = {
+    easy: t.ai_easy_desc,
+    normal: t.ai_normal_desc,
+    hard: t.ai_hard_desc,
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="bg-bg-secondary border border-border-default rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-bold uppercase tracking-wider">
-            {step === 'create' && 'New Session'}
-            {step === 'country' && 'Select Country'}
-            {step === 'ready' && 'Ready to Start'}
+            {step === 'create' && t.session_new}
+            {step === 'country' && t.session_select_country}
+            {step === 'ready' && t.session_ready}
           </h2>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary">
-            ✕
+            {'\u2715'}
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {error && (
             <div className="bg-severity-high/20 border border-severity-high/30 rounded p-2 mb-4 text-sm text-severity-high">
@@ -89,30 +100,29 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
           {step === 'create' && (
             <div className="space-y-4">
               <div>
-                <label className="text-text-secondary text-sm block mb-1">Session Name</label>
+                <label className="text-text-secondary text-sm block mb-1">{t.session_name}</label>
                 <input
                   type="text"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  placeholder="World War III"
+                  placeholder={t.session_name_placeholder}
                   className="w-full bg-bg-card border border-border-default rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-red focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-text-secondary text-sm block mb-1">Your Name</label>
+                <label className="text-text-secondary text-sm block mb-1">{t.session_your_name}</label>
                 <input
                   type="text"
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Commander"
+                  placeholder={t.session_your_name_placeholder}
                   className="w-full bg-bg-card border border-border-default rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-red focus:outline-none"
                 />
               </div>
 
-              {/* AI Settings */}
               <div className="border border-border-default rounded p-3 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-text-secondary text-sm">AI Opponents</label>
+                  <label className="text-text-secondary text-sm">{t.ai_opponents}</label>
                   <button
                     onClick={() => setAiEnabled(!aiEnabled)}
                     className={`w-10 h-5 rounded-full transition-colors relative ${aiEnabled ? 'bg-accent-green' : 'bg-bg-card border border-border-default'}`}
@@ -122,7 +132,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
                 </div>
                 {aiEnabled && (
                   <div>
-                    <label className="text-text-muted text-xs block mb-1">Difficulty</label>
+                    <label className="text-text-muted text-xs block mb-1">{t.ai_difficulty}</label>
                     <div className="flex gap-2">
                       {(['easy', 'normal', 'hard'] as const).map((d) => (
                         <button
@@ -136,15 +146,11 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
                               : 'bg-bg-card border border-border-default text-text-muted hover:text-text-primary'
                           }`}
                         >
-                          {d === 'easy' ? 'Easy' : d === 'normal' ? 'Normal' : 'Hard'}
+                          {AI_LABELS[d]}
                         </button>
                       ))}
                     </div>
-                    <p className="text-text-muted text-xs mt-1">
-                      {aiDifficulty === 'easy' ? 'AI acts slowly, makes basic decisions'
-                       : aiDifficulty === 'normal' ? 'Balanced AI with strategic thinking'
-                       : 'Aggressive AI, frequent actions, optimized strategy'}
-                    </p>
+                    <p className="text-text-muted text-xs mt-1">{AI_DESCS[aiDifficulty]}</p>
                   </div>
                 )}
               </div>
@@ -164,7 +170,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
                   <div>
                     <div className="text-text-primary text-sm font-medium">{c.name}</div>
                     <div className="text-text-muted text-xs">
-                      GDP: ${(c.startingState.economy.gdp / 1000).toFixed(1)}T | Power: {Math.round(c.startingState.military.army / 10000)}
+                      {t.panel_gdp}: ${(c.startingState.economy.gdp / 1000).toFixed(1)}T
                     </div>
                   </div>
                 </button>
@@ -180,14 +186,11 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
               <h3 className="text-xl font-bold mb-2">
                 {countries?.find((c) => c.code === selectedCountryCode)?.name}
               </h3>
-              <p className="text-text-secondary mb-6">
-                Ready to lead your nation. Press start to begin the game.
-              </p>
+              <p className="text-text-secondary mb-6">{t.session_ready_desc}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-border-default">
           {step === 'create' && (
             <button
@@ -195,7 +198,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
               disabled={loading}
               className="w-full bg-accent-red hover:bg-red-600 text-white py-2 rounded font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Session'}
+              {loading ? t.session_creating : t.session_create}
             </button>
           )}
           {step === 'ready' && (
@@ -204,7 +207,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
               disabled={loading}
               className="w-full bg-accent-green hover:bg-green-600 text-white py-2 rounded font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
             >
-              {loading ? 'Starting...' : 'Start Game'}
+              {loading ? t.session_starting : t.session_start}
             </button>
           )}
         </div>

@@ -1,5 +1,6 @@
 import type { GameState, GameStateDelta, CountryState, GameEvent } from '@conflict-game/shared-types';
-import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick, computeAIActions } from '@conflict-game/game-logic';
+import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick, computeAIActions, checkVictoryConditions } from '@conflict-game/game-logic';
+import type { VictoryResult } from '@conflict-game/game-logic';
 import type { AIState } from '@conflict-game/game-logic';
 import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { drainActions } from './action-queue.js';
@@ -269,14 +270,41 @@ export class GameLoop {
       }
     }
 
+    // 7. Victory check (every 10 ticks to avoid overhead)
+    let victoryResult: VictoryResult | null = null;
+    if (tick % 10 === 0 || tick >= state.session.settings.sessionDurationTicks) {
+      victoryResult = checkVictoryConditions(state);
+      if (victoryResult.achieved) {
+        newEvents.push({
+          id: `evt-${tick}-victory`,
+          sessionId,
+          type: 'victory' as GameEvent['type'],
+          title: `${victoryResult.winner} wins!`,
+          description: `Victory by ${victoryResult.condition}`,
+          severity: 'critical',
+          involvedCountries: victoryResult.winner ? [victoryResult.winner] : [],
+          tick,
+          data: { winner: victoryResult.winner, condition: victoryResult.condition, scores: victoryResult.scores },
+          createdAt: new Date().toISOString(),
+        });
+        state.session.status = 'finished';
+        state.session.finishedAt = new Date().toISOString();
+      }
+    }
+
     // Add events to state
     state.events.push(...newEvents);
-    // Keep only last 100 events in memory
     if (state.events.length > 100) {
       state.events = state.events.slice(-100);
     }
 
     this.store.setState(sessionId, state);
+
+    // Stop loop if game finished
+    if (victoryResult?.achieved) {
+      console.log(`[GameLoop] Game over! Winner: ${victoryResult.winner} by ${victoryResult.condition}`);
+      this.stop(sessionId);
+    }
 
     // Per-player fog: each player sees fogged data for other countries
     const playerConns = getPlayerConnections(sessionId);

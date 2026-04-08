@@ -8,3 +8,4 @@ export * from './resources/resource-tick.js';
 export * from './intelligence/intel-tick.js';
 export * from './technology/index.js';
 export * from './ai/index.js';
+export * from './victory/index.js';
