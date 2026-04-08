@@ -9,11 +9,11 @@
   "scripts": {
     "dev": "electron .",
     "build:server": "cd ../server && npm run build",
-    "build:web": "cd ../web && npm run build",
+    "build:web": "cd ../web && npx next build",
     "build:all": "npm run build:server && npm run build:web",
-    "dist:mac": "npm run build:all && electron-builder --mac",
-    "dist:win": "npm run build:all && electron-builder --win",
-    "dist": "npm run build:all && electron-builder --mac --win"
+    "dist:mac": "npm run build:all && electron-builder --mac --publish never",
+    "dist:win": "npm run build:all && electron-builder --win --publish never",
+    "dist": "npm run build:all && electron-builder --mac --win --publish never"
   },
   "build": {
     "appId": "game.conflict.app",
@@ -22,52 +22,64 @@
       "output": "release"
     },
     "files": [
-      "main.js",
-      "preload.js"
+      "main.js"
     ],
     "extraResources": [
       {
         "from": "../server/dist",
-        "to": "server",
+        "to": "server/dist",
         "filter": ["**/*"]
       },
       {
-        "from": "../server/node_modules",
-        "to": "server-modules",
-        "filter": ["**/*"]
+        "from": "../server/package.json",
+        "to": "server/package.json"
       },
       {
         "from": "../../node_modules",
-        "to": "root-modules",
-        "filter": ["fastify/**", "ws/**", "pino/**", "@fastify/**", "drizzle-orm/**"]
+        "to": "server/node_modules",
+        "filter": [
+          "fastify/**", "@fastify/**", "ws/**", "pino/**", "zod/**",
+          "drizzle-orm/**", "postgres/**", "nanoid/**",
+          "fast-json-stringify/**", "ajv/**", "find-my-way/**",
+          "abstract-logging/**", "avvio/**", "fast-content-type-parse/**",
+          "fast-querystring/**", "forwarded/**", "light-my-request/**",
+          "on-exit-leak-free/**", "pino-std-serializers/**", "process-warning/**",
+          "proxy-addr/**", "rfdc/**", "secure-json-parse/**",
+          "sonic-boom/**", "thread-stream/**", "toad-cache/**",
+          "ret/**", "safe-regex2/**", "ipaddr.js/**",
+          "atomic-sleep/**", "fast-redact/**", "quick-format-unescaped/**",
+          "real-require/**"
+        ]
       },
       {
-        "from": "../web/.next",
-        "to": "web/.next",
-        "filter": ["**/*", "!dev/**", "!cache/**"]
+        "from": "../../packages/shared-types",
+        "to": "server/node_modules/@conflict-game/shared-types",
+        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
+      },
+      {
+        "from": "../../packages/game-logic",
+        "to": "server/node_modules/@conflict-game/game-logic",
+        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
+      },
+      {
+        "from": "../../packages/utils",
+        "to": "server/node_modules/@conflict-game/utils",
+        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
+      },
+      {
+        "from": "../web/.next/standalone",
+        "to": "web",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../web/.next/static",
+        "to": "web/apps/web/.next/static",
+        "filter": ["**/*"]
       },
       {
         "from": "../web/public",
-        "to": "web/public",
+        "to": "web/apps/web/public",
         "filter": ["**/*"]
-      },
-      {
-        "from": "../web/package.json",
-        "to": "web/package.json"
-      },
-      {
-        "from": "../web/next.config.ts",
-        "to": "web/next.config.ts"
-      },
-      {
-        "from": "../../node_modules",
-        "to": "node_modules",
-        "filter": ["next/**", "react/**", "react-dom/**", "@next/**", "scheduler/**"]
-      },
-      {
-        "from": "../../packages",
-        "to": "packages",
-        "filter": ["**/*.ts", "**/*.js", "**/package.json"]
       }
     ],
     "mac": {

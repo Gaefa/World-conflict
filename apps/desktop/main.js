@@ -1,7 +1,8 @@
-const { app, BrowserWindow } = require('electron');
-const { fork } = require('child_process');
+const { app, BrowserWindow, dialog } = require('electron');
+const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 
 let mainWindow;
 let serverProcess;
@@ -10,6 +11,16 @@ let webProcess;
 const isDev = !app.isPackaged;
 const SERVER_PORT = 3002;
 const WEB_PORT = 3000;
+
+function log(...args) {
+  const msg = args.join(' ');
+  console.log(`[desktop] ${msg}`);
+  // Also write to a log file for debugging packaged app
+  if (!isDev) {
+    const logFile = path.join(app.getPath('userData'), 'conflict-game.log');
+    fs.appendFileSync(logFile, `${new Date().toISOString()} ${msg}\n`);
+  }
+}
 
 function getResourcePath(...segments) {
   if (isDev) {
@@ -22,14 +33,15 @@ function waitForPort(port, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const check = () => {
-      const req = http.request({ host: '127.0.0.1', port, method: 'HEAD', timeout: 500 }, () => {
+      const req = http.request({ host: '127.0.0.1', port, method: 'GET', path: '/', timeout: 500 }, (res) => {
+        res.resume();
         resolve();
       });
       req.on('error', () => {
         if (Date.now() - start > timeout) {
           reject(new Error(`Port ${port} not ready after ${timeout}ms`));
         } else {
-          setTimeout(check, 300);
+          setTimeout(check, 500);
         }
       });
       req.end();
@@ -40,112 +52,182 @@ function waitForPort(port, timeout = 30000) {
 
 function startServer() {
   return new Promise((resolve, reject) => {
+    const nodeExe = process.execPath.includes('electron') || process.execPath.includes('Electron')
+      ? 'node'
+      : process.execPath;
+
     if (isDev) {
-      // In dev, use tsx to run the server source directly
       const serverDir = path.join(__dirname, '..', 'server');
-      serverProcess = fork(
-        path.join(serverDir, 'node_modules', '.bin', 'tsx'),
-        ['src/index.ts'],
-        {
-          cwd: serverDir,
-          env: { ...process.env, PORT: String(SERVER_PORT) },
-          stdio: 'pipe',
-        }
-      );
+      log('Starting dev server from', serverDir);
+      serverProcess = spawn('npx', ['tsx', 'src/index.ts'], {
+        cwd: serverDir,
+        env: { ...process.env, PORT: String(SERVER_PORT) },
+        stdio: 'pipe',
+        shell: true,
+      });
     } else {
-      // In production, run the compiled server
-      const serverEntry = getResourcePath('server', 'index.js');
-      serverProcess = fork(serverEntry, [], {
+      const serverEntry = getResourcePath('server', 'dist', 'index.js');
+      log('Starting production server from', serverEntry);
+
+      if (!fs.existsSync(serverEntry)) {
+        log('ERROR: Server entry not found at', serverEntry);
+        reject(new Error(`Server entry not found: ${serverEntry}`));
+        return;
+      }
+
+      serverProcess = spawn(nodeExe, [serverEntry], {
+        cwd: getResourcePath('server'),
         env: {
           ...process.env,
           PORT: String(SERVER_PORT),
-          NODE_PATH: getResourcePath('server-modules'),
+          NODE_PATH: [
+            getResourcePath('server', 'node_modules'),
+            getResourcePath('node_modules'),
+          ].join(path.delimiter),
         },
         stdio: 'pipe',
+        shell: true,
       });
     }
 
-    serverProcess.stdout?.on('data', (d) => process.stdout.write(`[server] ${d}`));
-    serverProcess.stderr?.on('data', (d) => process.stderr.write(`[server] ${d}`));
-    serverProcess.on('error', reject);
+    serverProcess.stdout?.on('data', (d) => log('[server]', d.toString().trim()));
+    serverProcess.stderr?.on('data', (d) => log('[server:err]', d.toString().trim()));
+    serverProcess.on('error', (err) => {
+      log('Server process error:', err.message);
+      reject(err);
+    });
     serverProcess.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        console.error(`Server exited with code ${code}`);
-      }
+      log('Server exited with code', code);
     });
 
-    // Wait for server to be ready
-    waitForPort(SERVER_PORT).then(resolve).catch(reject);
+    waitForPort(SERVER_PORT, 30000).then(resolve).catch(reject);
   });
 }
 
 function startWeb() {
   return new Promise((resolve, reject) => {
+    const nodeExe = process.execPath.includes('electron') || process.execPath.includes('Electron')
+      ? 'node'
+      : process.execPath;
+
     if (isDev) {
       const webDir = path.join(__dirname, '..', 'web');
-      const nextBin = path.join(webDir, 'node_modules', '.bin', 'next');
-      webProcess = fork(nextBin, ['start', '-p', String(WEB_PORT)], {
+      log('Starting dev web from', webDir);
+      webProcess = spawn('npx', ['next', 'start', '-p', String(WEB_PORT)], {
         cwd: webDir,
         env: { ...process.env },
         stdio: 'pipe',
+        shell: true,
       });
     } else {
-      const nextBin = path.join(getResourcePath('web-modules'), '.bin', 'next');
+      // Next.js standalone output: run the standalone server.js directly
       const webDir = getResourcePath('web');
-      webProcess = fork(nextBin, ['start', '-p', String(WEB_PORT)], {
-        cwd: webDir,
+      const standaloneServer = path.join(webDir, 'apps', 'web', 'server.js');
+
+      log('Starting production web from', standaloneServer);
+
+      if (!fs.existsSync(standaloneServer)) {
+        log('ERROR: Standalone server not found at', standaloneServer);
+        // Try alternative path
+        const altPath = path.join(webDir, 'server.js');
+        if (fs.existsSync(altPath)) {
+          log('Found server.js at alternative path:', altPath);
+        }
+        reject(new Error(`Web server not found: ${standaloneServer}`));
+        return;
+      }
+
+      webProcess = spawn(nodeExe, [standaloneServer], {
+        cwd: path.dirname(standaloneServer),
         env: {
           ...process.env,
-          NODE_PATH: getResourcePath('web-modules'),
+          PORT: String(WEB_PORT),
+          HOSTNAME: '127.0.0.1',
         },
         stdio: 'pipe',
+        shell: true,
       });
     }
 
-    webProcess.stdout?.on('data', (d) => process.stdout.write(`[web] ${d}`));
-    webProcess.stderr?.on('data', (d) => process.stderr.write(`[web] ${d}`));
-    webProcess.on('error', reject);
+    webProcess.stdout?.on('data', (d) => log('[web]', d.toString().trim()));
+    webProcess.stderr?.on('data', (d) => log('[web:err]', d.toString().trim()));
+    webProcess.on('error', (err) => {
+      log('Web process error:', err.message);
+      reject(err);
+    });
+    webProcess.on('exit', (code) => {
+      log('Web exited with code', code);
+    });
 
-    waitForPort(WEB_PORT).then(resolve).catch(reject);
+    waitForPort(WEB_PORT, 30000).then(resolve).catch(reject);
   });
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 900,
     minWidth: 1024,
     minHeight: 600,
     title: 'Conflict.Game',
     backgroundColor: '#0a0a0a',
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
 
-  mainWindow.loadURL(`http://localhost:${WEB_PORT}`);
+  mainWindow.loadURL(`http://127.0.0.1:${WEB_PORT}`);
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
+// Splash/loading window while starting services
+function createSplash() {
+  const splash = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  splash.loadURL(`data:text/html;charset=utf-8,
+    <html><body style="background:#0a0a0a;color:#e0e0e0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui;border:1px solid #333;border-radius:12px;">
+      <h1 style="color:#dc2626;font-size:24px;letter-spacing:4px;margin:0">CONFLICT.GAME</h1>
+      <p style="color:#888;font-size:14px;margin-top:12px">Starting server...</p>
+    </body></html>
+  `);
+  return splash;
+}
+
 app.whenReady().then(async () => {
+  const splash = createSplash();
   try {
-    console.log('Starting Conflict.Game server...');
+    log('isDev:', isDev);
+    log('resourcesPath:', process.resourcesPath);
+
+    log('Starting server...');
     await startServer();
-    console.log('Server ready on port', SERVER_PORT);
+    log('Server ready on port', SERVER_PORT);
 
-    console.log('Starting web app...');
-    // In dev, assume web is already built (next start needs .next)
-    // For quick dev testing, user should run `npm run build` in apps/web first
+    log('Starting web...');
     await startWeb();
-    console.log('Web ready on port', WEB_PORT);
+    log('Web ready on port', WEB_PORT);
 
+    splash.close();
     createWindow();
   } catch (err) {
-    console.error('Failed to start:', err);
+    log('Failed to start:', err.message);
+    splash.close();
+    dialog.showErrorBox('Conflict.Game - Startup Error', `Failed to start: ${err.message}\n\nCheck logs at: ${path.join(app.getPath('userData'), 'conflict-game.log')}`);
     app.quit();
   }
 });
@@ -155,11 +237,11 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (serverProcess) {
+  if (serverProcess && !serverProcess.killed) {
     serverProcess.kill();
     serverProcess = null;
   }
-  if (webProcess) {
+  if (webProcess && !webProcess.killed) {
     webProcess.kill();
     webProcess = null;
   }

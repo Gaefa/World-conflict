@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install root dependencies
+      - name: Install all dependencies
         run: npm install
 
       - name: Install desktop dependencies
@@ -33,26 +33,32 @@ jobs:
         working-directory: apps/desktop
 
       - name: Build shared-types
-        run: npx tsc -p packages/shared-types/tsconfig.json || true
+        run: npx tsc -p packages/shared-types/tsconfig.json
+        continue-on-error: true
 
       - name: Build game-logic
-        run: npx tsc -p packages/game-logic/tsconfig.json || true
+        run: npx tsc -p packages/game-logic/tsconfig.json
+        continue-on-error: true
 
       - name: Build server
-        run: npx tsc -p apps/server/tsconfig.json || true
+        run: npx tsc -p apps/server/tsconfig.json
+        continue-on-error: true
 
-      - name: Build web
+      - name: Build web (standalone)
         run: npx next build
         working-directory: apps/web
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
-      - name: Build desktop (${{ matrix.platform }})
+      - name: Verify standalone output exists
+        run: ls -la apps/web/.next/standalone/ || echo "STANDALONE NOT FOUND"
+        shell: bash
+
+      - name: Build Electron (${{ matrix.platform }})
         run: npx electron-builder --${{ matrix.platform }} --publish never
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -110,7 +116,6 @@ jobs:
           body: |
             Автоматическая сборка десктоп-приложения.
 
-            Скачай файл для своей ОС:
             - **macOS**: `Conflict.Game-*.dmg`
             - **Windows**: `Conflict.Game-*.exe`
           files: dist/*
