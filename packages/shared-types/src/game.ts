@@ -11,6 +11,7 @@ export interface GameSettings {
   sessionDurationTicks: number;   // how many ticks until game ends
   speed: number;                  // 1x, 2x, 4x multiplier
   allowAI: boolean;
+  aiDifficulty: 'easy' | 'normal' | 'hard';
   victoryConditions: VictoryCondition[];
 }
 

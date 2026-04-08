@@ -5,6 +5,7 @@ interface HeaderProps {
   onlinePlayers: number;
   currentTick: number;
   isPaused: boolean;
+  tensionIndex: number;
   onTogglePause?: () => void;
 }
 
@@ -13,8 +14,12 @@ export function Header({
   onlinePlayers,
   currentTick,
   isPaused,
+  tensionIndex,
   onTogglePause,
 }: HeaderProps) {
+  const tensionColor = tensionIndex > 70 ? 'text-severity-high' : tensionIndex > 40 ? 'text-amber-400' : 'text-accent-green';
+  const tensionLabel = tensionIndex > 70 ? 'CRITICAL' : tensionIndex > 40 ? 'ELEVATED' : 'STABLE';
+
   return (
     <header className="h-12 bg-bg-secondary border-b border-border-default flex items-center px-4 shrink-0 z-50">
       <div className="flex items-center gap-2">
@@ -23,18 +28,29 @@ export function Header({
         </span>
       </div>
 
-      <div className="flex-1 flex justify-center gap-4">
-        <Stat value={activeSessions} label="Active" color="text-accent-red" />
-        <Stat value={onlinePlayers} label="Players" color="text-text-primary" />
+      <div className="flex-1 flex justify-center gap-3">
+        <Stat value={activeSessions} label="Active" icon="*" />
+        <Stat value={onlinePlayers} label="Players" icon="@" />
+        <div className="flex items-center gap-2 bg-bg-card px-3 py-1 rounded border border-border-default">
+          <span className={`${tensionColor} font-mono text-sm font-bold`}>{tensionIndex.toFixed(0)}</span>
+          <span className={`${tensionColor} text-xs uppercase`}>{tensionLabel}</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-text-muted text-sm font-mono">{tickToDate(currentTick)}</span>
+        <div className="flex items-center gap-2 bg-bg-card px-3 py-1 rounded border border-border-default">
+          <span className="text-text-primary text-sm font-mono">{tickToDate(currentTick)}</span>
+          <span className="text-text-muted text-xs">Tick {currentTick}</span>
+        </div>
         <button
           onClick={onTogglePause}
-          className="text-text-secondary hover:text-text-primary text-sm transition-colors"
+          className={`px-3 py-1 rounded text-sm font-bold uppercase tracking-wider transition-colors border ${
+            isPaused
+              ? 'bg-accent-green/20 text-accent-green border-accent-green/40 hover:bg-accent-green/30'
+              : 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
+          }`}
         >
-          {isPaused ? '▶' : '⏸'}
+          {isPaused ? 'Resume' : 'Pause'}
         </button>
       </div>
     </header>
@@ -52,10 +68,11 @@ function tickToDate(tick: number): string {
   return `${MONTHS[month]} ${year}`;
 }
 
-function Stat({ value, label, color }: { value: number; label: string; color: string }) {
+function Stat({ value, label, icon }: { value: number; label: string; icon: string }) {
   return (
     <div className="flex items-center gap-2 bg-bg-card px-3 py-1 rounded border border-border-default">
-      <span className={`${color} font-mono text-xl font-bold`}>{value}</span>
+      <span className="text-text-muted text-xs">{icon}</span>
+      <span className="text-text-primary font-mono text-sm font-bold">{value}</span>
       <span className="text-text-muted text-xs uppercase">{label}</span>
     </div>
   );

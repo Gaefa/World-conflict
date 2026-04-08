@@ -14,6 +14,8 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
 
   const { createSession, selectCountry, startGame, selectedCountryCode } = useGameStore();
   const { data: countries } = useCountries();
@@ -26,7 +28,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
     setLoading(true);
     setError('');
     try {
-      await createSession(sessionName.trim(), playerName.trim());
+      await createSession(sessionName.trim(), playerName.trim(), { allowAI: aiEnabled, aiDifficulty });
       setStep('country');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to create session');
@@ -105,6 +107,46 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
                   placeholder="Commander"
                   className="w-full bg-bg-card border border-border-default rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-red focus:outline-none"
                 />
+              </div>
+
+              {/* AI Settings */}
+              <div className="border border-border-default rounded p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-text-secondary text-sm">AI Opponents</label>
+                  <button
+                    onClick={() => setAiEnabled(!aiEnabled)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${aiEnabled ? 'bg-accent-green' : 'bg-bg-card border border-border-default'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${aiEnabled ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </div>
+                {aiEnabled && (
+                  <div>
+                    <label className="text-text-muted text-xs block mb-1">Difficulty</label>
+                    <div className="flex gap-2">
+                      {(['easy', 'normal', 'hard'] as const).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setAiDifficulty(d)}
+                          className={`flex-1 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-colors ${
+                            aiDifficulty === d
+                              ? d === 'easy' ? 'bg-accent-green/20 text-accent-green border border-accent-green/40'
+                              : d === 'normal' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                              : 'bg-severity-high/20 text-severity-high border border-severity-high/40'
+                              : 'bg-bg-card border border-border-default text-text-muted hover:text-text-primary'
+                          }`}
+                        >
+                          {d === 'easy' ? 'Easy' : d === 'normal' ? 'Normal' : 'Hard'}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-text-muted text-xs mt-1">
+                      {aiDifficulty === 'easy' ? 'AI acts slowly, makes basic decisions'
+                       : aiDifficulty === 'normal' ? 'Balanced AI with strategic thinking'
+                       : 'Aggressive AI, frequent actions, optimized strategy'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 import type { GameState, GameStateDelta, CountryState, GameEvent } from '@conflict-game/shared-types';
-import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick } from '@conflict-game/game-logic';
+import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick, computeAIActions } from '@conflict-game/game-logic';
+import type { AIState } from '@conflict-game/game-logic';
 import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { drainActions } from './action-queue.js';
 import { processAction } from './action-processor.js';
@@ -41,10 +42,15 @@ export class GameLoop {
   private intervals = new Map<string, ReturnType<typeof setInterval>>();
   private store: GameStateStore;
   private tickIntervalMs: number;
+  private aiStatesRef: Map<string, Map<string, AIState>> | null = null;
 
   constructor(store: GameStateStore, tickIntervalMs: number = 10_000) {
     this.store = store;
     this.tickIntervalMs = tickIntervalMs;
+  }
+
+  setAIStates(ref: Map<string, Map<string, AIState>>): void {
+    this.aiStatesRef = ref;
   }
 
   get stateStore(): GameStateStore {
@@ -122,6 +128,22 @@ export class GameLoop {
         payload: result,
       });
       console.log(`[GameLoop] Action ${queued.action.type} by ${queued.countryCode}: ${result.success ? 'OK' : result.message}`);
+    }
+
+    // 0.1. AI actions — AI countries decide and act
+    if (this.aiStatesRef) {
+      const sessionAI = this.aiStatesRef.get(sessionId);
+      if (sessionAI) {
+        for (const [code, aiState] of sessionAI) {
+          const aiActions = computeAIActions(state, aiState, tick);
+          for (const action of aiActions) {
+            const result = processAction(state, code, action);
+            if (result.success) {
+              console.log(`[AI] ${code} → ${action.type}: OK`);
+            }
+          }
+        }
+      }
     }
 
     // 0.5. Resource tick (cross-country: production, trade flows, deficits, prices)
@@ -292,6 +314,7 @@ export class GameLoop {
       const playerDelta: GameStateDelta = {
         tick,
         countries: foggedDeltas,
+        relations: state.relations,
         events: playerEvents.length > 0 ? playerEvents : undefined,
         tensionIndex: state.tensionIndex,
         resourceMarket: state.resourceMarket,

@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   sessionDurationTicks: 360,
   speed: 1,
   allowAI: true,
+  aiDifficulty: 'normal',
   victoryConditions: ['domination', 'economic_hegemony', 'diplomatic', 'technological', 'survival'],
 };
 

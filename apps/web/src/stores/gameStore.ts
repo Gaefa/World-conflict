@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import type { GameState, GameStateDelta, PlayerAction, ActionResult } from '@conflict-game/shared-types';
+import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3002/ws';
@@ -24,7 +25,7 @@ interface GameStore {
   lastActionResult: ActionResult | null;
 
   // Actions
-  createSession: (name: string, playerName: string) => Promise<void>;
+  createSession: (name: string, playerName: string, options?: { allowAI?: boolean; aiDifficulty?: string }) => Promise<void>;
   joinSession: (sessionId: string, playerName: string) => Promise<void>;
   selectCountry: (countryCode: string) => Promise<void>;
   startGame: () => Promise<void>;
@@ -48,11 +49,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isPaused: false,
   lastActionResult: null,
 
-  createSession: async (name: string, playerName: string) => {
+  createSession: async (name: string, playerName: string, options?: { allowAI?: boolean; aiDifficulty?: string }) => {
     const res = await fetch(`${API_URL}/api/game/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, playerName, maxPlayers: 30 }),
+      body: JSON.stringify({ name, playerName, maxPlayers: 30, ...options }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -124,7 +125,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
             break;
           case 'action_result':
             set({ lastActionResult: msg.payload });
-            if (!msg.payload.success) {
+            if (msg.payload.success) {
+              playActionSuccess();
+            } else {
+              playActionFailed();
               console.warn(`Action failed: ${msg.payload.message}`);
             }
             break;
@@ -206,10 +210,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
       newState.countries = newCountries;
     }
 
+    // Update relations
+    if (delta.relations) {
+      newState.relations = delta.relations;
+    }
+
     // Append events
     if (delta.events) {
       newState.events = [...newState.events, ...delta.events].slice(-100);
+      // Play sound for notable events
+      for (const evt of delta.events) {
+        playEventSound(evt.type, evt.severity);
+      }
     }
+
+    // Tick sound (subtle)
+    playTick();
 
     if (delta.tensionIndex !== undefined) {
       newState.tensionIndex = delta.tensionIndex;

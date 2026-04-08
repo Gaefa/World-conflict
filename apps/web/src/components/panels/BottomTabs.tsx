@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { CountryState, PlayerAction, ResourceType, ResourceBalance } from '@conflict-game/shared-types';
+import type { CountryState, PlayerAction, ResourceType, ResourceBalance, DiplomaticRelation } from '@conflict-game/shared-types';
+import { RelationsPanel } from './RelationsPanel';
 
 // Intel constants inlined to avoid Turbopack .js extension resolution issues with shared-types
 type SpyOpKey = 'humint' | 'sigint' | 'satellite' | 'cyber_espionage' | 'diplomatic_probe';
@@ -33,6 +34,10 @@ interface BottomTabsProps {
   isGameActive?: boolean;
   /** Whether this country has active sanctions against it */
   hasSanctions?: boolean;
+  /** All diplomatic relations in the game */
+  relations?: DiplomaticRelation[];
+  /** Current game tick */
+  currentTick?: number;
 }
 
 export function BottomTabs({
@@ -44,6 +49,8 @@ export function BottomTabs({
   playerCountryCode,
   isGameActive,
   hasSanctions,
+  relations,
+  currentTick,
 }: BottomTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
 
@@ -85,6 +92,8 @@ export function BottomTabs({
                   targetCountryCode={targetCountryCode}
                   playerCountryCode={playerCountryCode}
                   hasSanctions={hasSanctions}
+                  relations={relations}
+                  currentTick={currentTick}
                 />
               )
             ) : (
@@ -199,6 +208,8 @@ interface TabProps {
   targetCountryCode?: string | null;
   playerCountryCode?: string | null;
   hasSanctions?: boolean;
+  relations?: DiplomaticRelation[];
+  currentTick?: number;
 }
 
 function TabContent({ tab, ...props }: TabProps & { tab: Tab }) {
@@ -641,7 +652,7 @@ const TRADEABLE_RESOURCES: { resource: ResourceType; label: string }[] = [
   { resource: 'weaponsComponents', label: 'Weapons' }, { resource: 'pharmaceuticals', label: 'Pharma' },
 ];
 
-function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCountryCode }: TabProps) {
+function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCountryCode, relations, currentTick }: TabProps) {
   const [showTrade, setShowTrade] = useState(false);
   const [tradeOffers, setTradeOffers] = useState<Record<string, number>>({});
   const [tradeRequests, setTradeRequests] = useState<Record<string, number>>({});
@@ -790,6 +801,18 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
           >
             SEND TRADE PROPOSAL (12 months)
           </button>
+        </div>
+      )}
+
+      {/* Relations overview */}
+      {relations && relations.length > 0 && (
+        <div className="mt-4 border-t border-border-default pt-3">
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Active Relations</h4>
+          <RelationsPanel
+            relations={relations}
+            playerCountryCode={playerCountryCode ?? null}
+            currentTick={currentTick ?? 0}
+          />
         </div>
       )}
     </div>

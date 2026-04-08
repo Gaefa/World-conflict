@@ -36,7 +36,7 @@ export function CountryPanel({ country }: CountryPanelProps) {
             {country ? country.name : 'Select Country'}
           </h2>
         )}
-        <span className="text-text-muted text-xs">{collapsed ? '◀' : '▶'}</span>
+        <span className="text-text-muted text-xs">{collapsed ? '\u25C0' : '\u25B6'}</span>
       </button>
 
       {!collapsed && (
@@ -68,17 +68,56 @@ export function CountryPanel({ country }: CountryPanelProps) {
               <div className="text-center pb-2">
                 <p className="text-text-muted text-xs font-mono">{country.code}</p>
               </div>
-              <StatBar label="Power Index" value={country.powerIndex} max={100} color="bg-accent-red" />
-              <StatBar label="GDP" value={country.gdp / 1e12} max={25} color="bg-accent-green" suffix="T$" />
-              <StatBar label="Military" value={country.militaryPower} max={100} color="bg-accent-amber" />
-              <StatBar label="Stability" value={country.stability} max={100} color="bg-accent-blue" />
-              <StatBar label="Tech Level" value={country.techLevel} max={10} color="bg-purple-500" />
+
+              {/* Power Index — prominently displayed */}
+              <div className="bg-bg-card border border-border-default rounded p-3 text-center">
+                <p className="text-text-muted text-xs uppercase mb-1">Index of Power</p>
+                <p className={`text-3xl font-bold font-mono ${
+                  country.powerIndex > 70 ? 'text-accent-red' : country.powerIndex > 40 ? 'text-amber-400' : 'text-text-primary'
+                }`}>
+                  {country.powerIndex.toFixed(1)}
+                </p>
+              </div>
+
+              {/* Stats grid */}
+              <div className="space-y-2">
+                <StatBar
+                  label="GDP"
+                  value={country.gdp / 1e12}
+                  max={25}
+                  color="bg-accent-green"
+                  suffix="T$"
+                  icon="$"
+                />
+                <StatBar
+                  label="Military"
+                  value={country.militaryPower}
+                  max={100}
+                  color="bg-accent-red"
+                  icon="!"
+                />
+                <StatBar
+                  label="Stability"
+                  value={country.stability}
+                  max={100}
+                  color={country.stability < 30 ? 'bg-severity-high' : country.stability < 60 ? 'bg-amber-500' : 'bg-accent-blue'}
+                  icon="~"
+                  warn={country.stability < 30}
+                />
+                <StatBar
+                  label="Tech Level"
+                  value={country.techLevel}
+                  max={10}
+                  color="bg-purple-500"
+                  icon=">"
+                />
+              </div>
 
               <div className="border-t border-border-default pt-3 mt-3">
-                <p className="text-text-muted text-xs mb-1">Population</p>
-                <p className="text-text-primary font-mono text-sm">
-                  {country.population > 0 ? `${(country.population / 1e6).toFixed(1)}M` : 'Unknown'}
-                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <MiniStat label="Population" value={country.population > 0 ? `${(country.population / 1e6).toFixed(0)}M` : '---'} />
+                  <MiniStat label="GDP Growth" value={`${((country.gdp / 1e12 / 25) * 2).toFixed(1)}%`} />
+                </div>
               </div>
             </div>
           )}
@@ -94,25 +133,45 @@ function StatBar({
   max,
   color,
   suffix = '',
+  icon,
+  warn = false,
 }: {
   label: string;
   value: number;
   max: number;
   color: string;
   suffix?: string;
+  icon?: string;
+  warn?: boolean;
 }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
-        <span className="text-text-secondary">{label}</span>
+        <span className={`text-text-secondary flex items-center gap-1 ${warn ? 'text-severity-high animate-pulse' : ''}`}>
+          {icon && <span className="text-text-muted">{icon}</span>}
+          {label}
+          {warn && <span className="text-severity-high text-[10px]"> CRITICAL</span>}
+        </span>
         <span className="text-text-primary font-mono">
           {value.toFixed(1)}{suffix}
         </span>
       </div>
-      <div className="h-1.5 bg-bg-card rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      <div className="h-2 bg-bg-card rounded-full overflow-hidden border border-border-default/50">
+        <div
+          className={`h-full ${color} rounded-full transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-bg-card border border-border-default rounded p-2">
+      <p className="text-text-muted text-[10px] uppercase">{label}</p>
+      <p className="text-text-primary font-mono text-sm">{value}</p>
     </div>
   );
 }

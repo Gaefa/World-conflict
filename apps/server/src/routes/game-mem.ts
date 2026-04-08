@@ -4,7 +4,8 @@ import { GameLoop, InMemoryGameStateStore } from '../game/loop.js';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { defaultTechBonuses } from '@conflict-game/shared-types';
-import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses } from '@conflict-game/game-logic';
+import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses, createAIState } from '@conflict-game/game-logic';
+import type { AIState } from '@conflict-game/game-logic';
 
 /** Default intelligence state for a new country */
 function defaultIntel(): IntelligenceState {
@@ -31,9 +32,16 @@ import { setStateResolver, setGameLoopRef } from '../ws/handler.js';
 const store = new InMemoryGameStateStore();
 const gameLoop = new GameLoop(store);
 
+// AI state per session: sessionId → countryCode → AIState
+const aiStates = new Map<string, Map<string, AIState>>();
+export { aiStates };
+
 // Let WS handler look up game state and game loop for pause/resume
 setStateResolver((sessionId) => store.getState(sessionId));
 setGameLoopRef(gameLoop);
+
+// Wire AI states to game loop
+gameLoop.setAIStates(aiStates);
 
 export { gameLoop, store };
 
@@ -110,9 +118,24 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
     };
 
     store.setState(sessionId, gameState);
+
+    // Initialize AI for all non-player countries (if AI enabled)
+    const playerCountries = new Set(sessionPlayers.map(p => p.countryCode));
+    const sessionAI = new Map<string, AIState>();
+    if (settings.allowAI !== false) {
+      const diff = settings.aiDifficulty ?? 'normal';
+      for (const [code, country] of Object.entries(countries)) {
+        if (!playerCountries.has(code)) {
+          sessionAI.set(code, createAIState(code, country, diff));
+        }
+      }
+    }
+    aiStates.set(sessionId, sessionAI);
+    console.log(`[AI] Initialized ${sessionAI.size} AI countries for session ${sessionId}`);
+
     gameLoop.start(sessionId);
 
-    return { status: 'started', sessionId };
+    return { status: 'started', sessionId, aiCountries: sessionAI.size };
   });
 
   // POST /sessions/:id/select-country

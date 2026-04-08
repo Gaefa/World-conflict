@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   sessionDurationTicks: 360,
   speed: 1,
   allowAI: true,
+  aiDifficulty: 'normal',
   victoryConditions: ['domination', 'economic_hegemony', 'diplomatic', 'technological', 'survival'],
 };
 
@@ -57,6 +58,8 @@ const CreateSessionBody = z.object({
   name: z.string().min(1).max(100),
   playerName: z.string().min(1),
   maxPlayers: z.number().int().min(2).max(30).optional(),
+  allowAI: z.boolean().optional(),
+  aiDifficulty: z.enum(['easy', 'normal', 'hard']).optional(),
 });
 
 const JoinSessionBody = z.object({
@@ -85,8 +88,13 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
     const parsed = CreateSessionBody.safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
 
-    const { name, playerName, maxPlayers } = parsed.data;
-    const settings = { ...DEFAULT_SETTINGS, maxPlayers: maxPlayers ?? DEFAULT_SETTINGS.maxPlayers };
+    const { name, playerName, maxPlayers, allowAI, aiDifficulty } = parsed.data;
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      maxPlayers: maxPlayers ?? DEFAULT_SETTINGS.maxPlayers,
+      allowAI: allowAI ?? DEFAULT_SETTINGS.allowAI,
+      aiDifficulty: aiDifficulty ?? DEFAULT_SETTINGS.aiDifficulty,
+    };
 
     const sessionId = randomUUID();
     const playerId = randomUUID();

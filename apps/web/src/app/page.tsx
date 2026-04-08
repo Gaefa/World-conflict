@@ -150,6 +150,7 @@ export default function Home() {
         onlinePlayers={playerCount}
         currentTick={currentTick}
         isPaused={isPaused}
+        tensionIndex={tensionIndex}
         onTogglePause={togglePause}
       />
 
@@ -211,6 +212,8 @@ export default function Home() {
         hasSanctions={!!playerCountryCode && !!gameState?.relations.some(
           r => r.toCountry === playerCountryCode && r.type === 'sanction' && r.status === 'active'
         )}
+        relations={gameState?.relations}
+        currentTick={currentTick}
       />
 
       <ActionToast />
