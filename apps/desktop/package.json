@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Conflict.Game - Geopolitical MMO Strategy",
   "author": "Conflict.Game Team",
+  "repository": "https://github.com/Gaefa/World-conflict",
   "private": true,
   "main": "main.js",
   "scripts": {

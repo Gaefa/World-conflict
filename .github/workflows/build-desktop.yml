@@ -48,7 +48,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Build desktop (${{ matrix.platform }})
-        run: npx electron-builder --${{ matrix.platform }}
+        run: npx electron-builder --${{ matrix.platform }} --publish never
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
