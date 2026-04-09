@@ -31,42 +31,6 @@
         "filter": ["**/*"]
       },
       {
-        "from": "../server/package.json",
-        "to": "server/package.json"
-      },
-      {
-        "from": "../../node_modules",
-        "to": "server/node_modules",
-        "filter": [
-          "fastify/**", "@fastify/**", "ws/**", "pino/**", "zod/**",
-          "drizzle-orm/**", "postgres/**", "nanoid/**",
-          "fast-json-stringify/**", "ajv/**", "find-my-way/**",
-          "abstract-logging/**", "avvio/**", "fast-content-type-parse/**",
-          "fast-querystring/**", "forwarded/**", "light-my-request/**",
-          "on-exit-leak-free/**", "pino-std-serializers/**", "process-warning/**",
-          "proxy-addr/**", "rfdc/**", "secure-json-parse/**",
-          "sonic-boom/**", "thread-stream/**", "toad-cache/**",
-          "ret/**", "safe-regex2/**", "ipaddr.js/**",
-          "atomic-sleep/**", "fast-redact/**", "quick-format-unescaped/**",
-          "real-require/**"
-        ]
-      },
-      {
-        "from": "../../packages/shared-types",
-        "to": "server/node_modules/@conflict-game/shared-types",
-        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
-      },
-      {
-        "from": "../../packages/game-logic",
-        "to": "server/node_modules/@conflict-game/game-logic",
-        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
-      },
-      {
-        "from": "../../packages/utils",
-        "to": "server/node_modules/@conflict-game/utils",
-        "filter": ["src/**", "dist/**", "package.json", "tsconfig.json"]
-      },
-      {
         "from": "../web/.next/standalone",
         "to": "web",
         "filter": ["**/*"]

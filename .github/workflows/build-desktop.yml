@@ -32,17 +32,15 @@ jobs:
         run: npm install
         working-directory: apps/desktop
 
-      - name: Build shared-types
-        run: npx tsc -p packages/shared-types/tsconfig.json
-        continue-on-error: true
+      - name: Build server (esbuild bundle)
+        run: npm run build
+        working-directory: apps/server
 
-      - name: Build game-logic
-        run: npx tsc -p packages/game-logic/tsconfig.json
-        continue-on-error: true
-
-      - name: Build server
-        run: npx tsc -p apps/server/tsconfig.json
-        continue-on-error: true
+      - name: Verify server bundle
+        run: |
+          test -f apps/server/dist/index.js || (echo "Server bundle missing" && exit 1)
+          echo "Server bundle size: $(wc -c < apps/server/dist/index.js) bytes"
+        shell: bash
 
       - name: Build web (standalone)
         run: npx next build

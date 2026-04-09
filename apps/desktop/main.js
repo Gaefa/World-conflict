@@ -1,18 +1,17 @@
 const { app, BrowserWindow, dialog } = require('electron');
-const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 
 let mainWindow;
-let serverProcess;
-let webProcess;
+let splashWindow;
 
 const isDev = !app.isPackaged;
 const SERVER_PORT = 3002;
 const WEB_PORT = 3000;
 
-// Logging helper — writes to file even before Electron is ready
+// --- Logging (to file + console) ---
 const LOG_FILE = (() => {
   try {
     const dir = app.getPath('userData');
@@ -24,24 +23,45 @@ const LOG_FILE = (() => {
 })();
 
 function log(...args) {
-  const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+  const msg = args
+    .map((a) => (typeof a === 'string' ? a : a instanceof Error ? (a.stack || a.message) : JSON.stringify(a)))
+    .join(' ');
   const line = `${new Date().toISOString()} ${msg}`;
-  console.log(line);
+  try { console.log(line); } catch {}
   if (LOG_FILE) {
     try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch {}
   }
 }
 
-// Clear log file on startup
+// Clear log on startup
 if (LOG_FILE) {
   try { fs.writeFileSync(LOG_FILE, ''); } catch {}
 }
+
+// --- Single-instance lock: hard guard against any fork-bomb recurrence ---
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  // Another instance is already running. Bail out immediately, BEFORE
+  // doing anything else, so we can never recurse.
+  log('Another instance is already running — exiting this one');
+  app.quit();
+  process.exit(0);
+}
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
 
 log('=== Conflict.Game starting ===');
 log('isDev:', isDev);
 log('execPath:', process.execPath);
 log('resourcesPath:', process.resourcesPath || '(dev)');
 log('platform:', process.platform);
+log('node version:', process.versions.node);
+log('electron version:', process.versions.electron);
 
 function getResourcePath(...segments) {
   if (isDev) {
@@ -62,151 +82,143 @@ function waitForPort(port, timeout = 30000) {
         if (Date.now() - start > timeout) {
           reject(new Error(`Port ${port} not ready after ${timeout}ms`));
         } else {
-          setTimeout(check, 500);
+          setTimeout(check, 300);
         }
       });
       req.on('timeout', () => { req.destroy(); });
       req.end();
     };
-    setTimeout(check, 500);
+    setTimeout(check, 300);
   });
 }
 
-function startServer() {
-  return new Promise((resolve, reject) => {
-    if (isDev) {
-      const serverDir = path.join(__dirname, '..', 'server');
-      log('[dev] Starting server from', serverDir);
-      const tsxBin = path.join(serverDir, 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.cmd' : 'tsx');
-      serverProcess = spawn(tsxBin, ['src/index.ts'], {
-        cwd: serverDir,
-        env: { ...process.env, PORT: String(SERVER_PORT) },
-        stdio: 'pipe',
-        windowsHide: true,
-      });
-    } else {
-      const serverEntry = getResourcePath('server', 'dist', 'index.js');
-      log('[prod] Server entry:', serverEntry);
-
-      if (!fs.existsSync(serverEntry)) {
-        log('ERROR: Server entry does not exist');
-        // List what we have in resources to help debug
-        try {
-          const resources = fs.readdirSync(process.resourcesPath);
-          log('resourcesPath contents:', resources.join(', '));
-          const serverDir = path.join(process.resourcesPath, 'server');
-          if (fs.existsSync(serverDir)) {
-            log('server dir contents:', fs.readdirSync(serverDir).join(', '));
-            const distDir = path.join(serverDir, 'dist');
-            if (fs.existsSync(distDir)) {
-              log('server/dist contents:', fs.readdirSync(distDir).join(', '));
-            }
-          }
-        } catch (e) {
-          log('Failed to list resources:', e.message);
-        }
-        reject(new Error(`Server not found: ${serverEntry}`));
-        return;
-      }
-
-      // Use ELECTRON_RUN_AS_NODE to run the current binary as Node.js
-      // This avoids needing a separate node executable
-      serverProcess = spawn(process.execPath, [serverEntry], {
-        cwd: getResourcePath('server'),
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-          PORT: String(SERVER_PORT),
-          NODE_ENV: 'production',
-          NODE_PATH: getResourcePath('server', 'node_modules'),
-        },
-        stdio: 'pipe',
-        windowsHide: true,
-      });
-    }
-
-    serverProcess.stdout?.on('data', (d) => log('[server]', d.toString().trim()));
-    serverProcess.stderr?.on('data', (d) => log('[server:err]', d.toString().trim()));
-    serverProcess.on('error', (err) => {
-      log('[server] spawn error:', err.message);
-      reject(err);
-    });
-    serverProcess.on('exit', (code, signal) => {
-      log('[server] exited with code', code, 'signal', signal);
-    });
-
-    waitForPort(SERVER_PORT, 30000).then(resolve).catch(reject);
-  });
+function listDir(p, depth = 1) {
+  try {
+    if (!fs.existsSync(p)) return `${p} (missing)`;
+    const entries = fs.readdirSync(p);
+    return `${p}: ${entries.join(', ')}`;
+  } catch (e) {
+    return `${p} (read error: ${e.message})`;
+  }
 }
 
-function startWeb() {
-  return new Promise((resolve, reject) => {
-    if (isDev) {
-      const webDir = path.join(__dirname, '..', 'web');
-      log('[dev] Starting web from', webDir);
-      const nextBin = path.join(webDir, 'node_modules', '.bin', process.platform === 'win32' ? 'next.cmd' : 'next');
-      webProcess = spawn(nextBin, ['start', '-p', String(WEB_PORT)], {
-        cwd: webDir,
-        env: { ...process.env },
-        stdio: 'pipe',
-        windowsHide: true,
-      });
-    } else {
-      const webDir = getResourcePath('web');
-      const standaloneServer = path.join(webDir, 'apps', 'web', 'server.js');
+// --- In-process server startup ---
+// We load the Fastify server and Next.js standalone server directly into
+// the Electron main process. This avoids:
+//   • needing a separate `node` binary (not present in packaged Electron)
+//   • ELECTRON_RUN_AS_NODE, which electron-builder strips for security
+//   • spawning subprocesses that create cmd.exe popups on Windows
+//   • the fork-bomb risk we hit last build
 
-      log('[prod] Web entry:', standaloneServer);
+async function startServerInProcess() {
+  const serverEntry = getResourcePath('server', 'dist', 'index.js');
+  log('Loading Fastify server in-process:', serverEntry);
 
-      if (!fs.existsSync(standaloneServer)) {
-        log('ERROR: Web server not found');
-        try {
-          if (fs.existsSync(webDir)) {
-            log('web dir contents:', fs.readdirSync(webDir).join(', '));
-            const appsDir = path.join(webDir, 'apps');
-            if (fs.existsSync(appsDir)) {
-              log('web/apps contents:', fs.readdirSync(appsDir).join(', '));
-              const webSubdir = path.join(appsDir, 'web');
-              if (fs.existsSync(webSubdir)) {
-                log('web/apps/web contents:', fs.readdirSync(webSubdir).join(', '));
-              }
-            }
-          }
-        } catch (e) {
-          log('Failed to list web dir:', e.message);
-        }
-        reject(new Error(`Web server not found: ${standaloneServer}`));
-        return;
-      }
+  if (!fs.existsSync(serverEntry)) {
+    log('ERROR: server entry missing');
+    log(listDir(process.resourcesPath));
+    log(listDir(getResourcePath('server')));
+    log(listDir(getResourcePath('server', 'dist')));
+    throw new Error(`Server entry not found: ${serverEntry}`);
+  }
 
-      webProcess = spawn(process.execPath, [standaloneServer], {
-        cwd: path.dirname(standaloneServer),
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-          PORT: String(WEB_PORT),
-          HOSTNAME: '127.0.0.1',
-          NODE_ENV: 'production',
-        },
-        stdio: 'pipe',
-        windowsHide: true,
-      });
-    }
+  // Server reads PORT/HOST from env at module load time.
+  process.env.PORT = String(SERVER_PORT);
+  process.env.HOST = '127.0.0.1';
+  process.env.NODE_ENV = 'production';
 
-    webProcess.stdout?.on('data', (d) => log('[web]', d.toString().trim()));
-    webProcess.stderr?.on('data', (d) => log('[web:err]', d.toString().trim()));
-    webProcess.on('error', (err) => {
-      log('[web] spawn error:', err.message);
-      reject(err);
-    });
-    webProcess.on('exit', (code, signal) => {
-      log('[web] exited with code', code, 'signal', signal);
-    });
+  // Ensure module resolution finds bundled node_modules.
+  const serverDir = getResourcePath('server');
+  const serverNodeModules = path.join(serverDir, 'node_modules');
+  if (fs.existsSync(serverNodeModules)) {
+    process.env.NODE_PATH = serverNodeModules +
+      (process.env.NODE_PATH ? path.delimiter + process.env.NODE_PATH : '');
+    require('module').Module._initPaths();
+  }
 
-    waitForPort(WEB_PORT, 30000).then(resolve).catch(reject);
-  });
+  // apps/server is ESM ("type": "module"), so we must use dynamic import.
+  // On Windows, import() requires a file:// URL, not a raw path.
+  try {
+    const url = pathToFileURL(serverEntry).href;
+    log('Dynamic-importing server from:', url);
+    await import(url);
+    log('Server module evaluated — waiting for listen()...');
+  } catch (e) {
+    log('Failed to import server:', e);
+    throw e;
+  }
+
+  await waitForPort(SERVER_PORT, 30000);
+  log('Fastify server ready on', SERVER_PORT);
 }
 
-function createWindow() {
+async function startWebInProcess() {
+  // Next.js standalone produces .next/standalone/apps/web/server.js
+  // (because of the monorepo layout).
+  const standaloneServer = getResourcePath('web', 'apps', 'web', 'server.js');
+  log('Loading Next.js standalone in-process:', standaloneServer);
+
+  if (!fs.existsSync(standaloneServer)) {
+    log('ERROR: web server.js missing');
+    log(listDir(getResourcePath('web')));
+    log(listDir(getResourcePath('web', 'apps')));
+    log(listDir(getResourcePath('web', 'apps', 'web')));
+    throw new Error(`Web server not found: ${standaloneServer}`);
+  }
+
+  // Next.js standalone server expects cwd to be its own directory so it can
+  // resolve ./.next relative paths.
+  const webCwd = path.dirname(standaloneServer);
+  try {
+    process.chdir(webCwd);
+    log('chdir to:', webCwd);
+  } catch (e) {
+    log('chdir failed:', e.message);
+  }
+
+  process.env.PORT = String(WEB_PORT);
+  process.env.HOSTNAME = '127.0.0.1';
+  process.env.NEXT_TELEMETRY_DISABLED = '1';
+  process.env.NODE_ENV = 'production';
+
+  try {
+    require(standaloneServer);
+    log('Web module evaluated — waiting for listen()...');
+  } catch (e) {
+    log('Failed to require web:', e);
+    throw e;
+  }
+
+  await waitForPort(WEB_PORT, 30000);
+  log('Next.js ready on', WEB_PORT);
+}
+
+// --- Windows ---
+function createSplash() {
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 220,
+    frame: false,
+    transparent: false,
+    resizable: false,
+    alwaysOnTop: true,
+    center: true,
+    skipTaskbar: false,
+    title: 'Conflict.Game',
+    autoHideMenuBar: true,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  const html = `
+    <html><head><meta charset="utf-8"><title>Conflict.Game</title></head>
+    <body style="background:#0a0a0a;color:#e0e0e0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif;border:1px solid #333;">
+      <h1 style="color:#dc2626;font-size:26px;letter-spacing:4px;margin:0">CONFLICT.GAME</h1>
+      <p style="color:#888;font-size:13px;margin-top:12px">Loading the world...</p>
+    </body></html>
+  `;
+  splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+}
+
+function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -225,6 +237,7 @@ function createWindow() {
   mainWindow.loadURL(`http://127.0.0.1:${WEB_PORT}`);
 
   mainWindow.once('ready-to-show', () => {
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
     mainWindow.show();
   });
 
@@ -233,49 +246,20 @@ function createWindow() {
   });
 }
 
-function createSplash() {
-  const splash = new BrowserWindow({
-    width: 400,
-    height: 200,
-    frame: false,
-    transparent: false,
-    resizable: false,
-    alwaysOnTop: true,
-    center: true,
-    title: 'Conflict.Game',
-    autoHideMenuBar: true,
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
-  });
-  splash.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
-    <html><head><title>Conflict.Game</title></head>
-    <body style="background:#0a0a0a;color:#e0e0e0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:system-ui,-apple-system,sans-serif;border:1px solid #333;">
-      <h1 style="color:#dc2626;font-size:24px;letter-spacing:4px;margin:0">CONFLICT.GAME</h1>
-      <p style="color:#888;font-size:14px;margin-top:12px">Starting server...</p>
-    </body></html>
-  `));
-  return splash;
-}
-
 app.whenReady().then(async () => {
-  let splash;
   try {
-    splash = createSplash();
-    log('Starting server...');
-    await startServer();
-    log('Server ready on port', SERVER_PORT);
+    createSplash();
 
-    log('Starting web...');
-    await startWeb();
-    log('Web ready on port', WEB_PORT);
+    await startServerInProcess();
+    await startWebInProcess();
 
-    if (splash && !splash.isDestroyed()) splash.close();
-    createWindow();
+    createMainWindow();
   } catch (err) {
-    log('Failed to start:', err.message, err.stack);
-    if (splash && !splash.isDestroyed()) splash.close();
+    log('Fatal startup error:', err);
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
     dialog.showErrorBox(
-      'Conflict.Game - Startup Error',
-      `Failed to start: ${err.message}\n\nCheck logs at: ${LOG_FILE}`
+      'Conflict.Game — Startup Error',
+      `Failed to start the game.\n\n${err.message}\n\nLog file:\n${LOG_FILE}`
     );
     app.quit();
   }
@@ -285,13 +269,9 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 
-app.on('before-quit', () => {
-  if (serverProcess && !serverProcess.killed) {
-    try { serverProcess.kill(); } catch {}
-    serverProcess = null;
-  }
-  if (webProcess && !webProcess.killed) {
-    try { webProcess.kill(); } catch {}
-    webProcess = null;
-  }
+process.on('uncaughtException', (err) => {
+  log('uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  log('unhandledRejection:', reason);
 });

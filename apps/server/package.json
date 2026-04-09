@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "node build.mjs",
+    "build:types": "tsc --emitDeclarationOnly",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.30.0",
+    "esbuild": "^0.19.12",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2"
   }
