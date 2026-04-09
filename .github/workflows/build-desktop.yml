@@ -28,8 +28,12 @@ jobs:
       - name: Install all dependencies
         run: npm install
 
-      - name: Install desktop dependencies
-        run: npm install
+      - name: Force-install electron locally in apps/desktop
+        # Workaround: npm hoists electron to the root node_modules in this
+        # monorepo, but electron-builder requires electron to be resolvable
+        # from apps/desktop/node_modules to compute the version. Install it
+        # directly here with --no-save so package.json stays clean.
+        run: npm install electron@35.7.5 electron-builder@26.8.1 --no-save --no-package-lock
         working-directory: apps/desktop
 
       - name: Build server (esbuild bundle)
