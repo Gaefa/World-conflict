@@ -1,14 +1,37 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, protocol, net } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 
+// Register a privileged custom scheme BEFORE app is ready. This scheme
+// behaves like http/https: it's a "standard" URL, supports fetch/XHR,
+// has a proper origin, and is secure enough to use modern web APIs
+// (WebGL, WebAudio, Workers). We serve the statically-exported Next.js
+// UI from this scheme so that absolute asset paths like
+// `/_next/static/chunks/foo.js` resolve against the app's own root
+// instead of the operating-system filesystem root (as they would under
+// file://).
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
+
 let mainWindow;
 let splashWindow;
 let devWebServerPid = null;
 
-const isDev = !app.isPackaged;
+// Allow forcing prod-mode codepaths during local testing (e.g. to smoke test
+// the app:// protocol handler without packaging a full DMG/EXE).
+const isDev = !app.isPackaged && process.env.CONFLICT_FORCE_PROD !== '1';
 const SERVER_PORT = 3002;
 // Dev mode still uses Next.js dev server on :3000 (hot reload). Production
 // loads the statically-exported UI directly from disk via file://.
@@ -67,7 +90,10 @@ log('node version:', process.versions.node);
 log('electron version:', process.versions.electron);
 
 function getResourcePath(...segments) {
-  if (isDev) {
+  // When NOT packaged (including CONFLICT_FORCE_PROD=1 smoke tests on dev
+  // machines), resolve relative to the monorepo. When packaged by
+  // electron-builder, extraResources are copied into process.resourcesPath.
+  if (!app.isPackaged) {
     return path.join(__dirname, '..', ...segments);
   }
   return path.join(process.resourcesPath, ...segments);
@@ -155,17 +181,54 @@ async function startServerInProcess() {
   log('Fastify server ready on', SERVER_PORT);
 }
 
-function resolveWebIndexHtml() {
-  // Production: statically exported UI is shipped as extraResources under
-  // `resources/web/index.html`. No Next.js runtime server is required.
-  const indexPath = getResourcePath('web', 'index.html');
-  log('Resolving static web entry:', indexPath);
-  if (!fs.existsSync(indexPath)) {
-    log('ERROR: web index.html missing');
-    log(listDir(getResourcePath('web')));
-    throw new Error(`Web entry not found: ${indexPath}`);
+function registerAppProtocol() {
+  // Map `app://local/<path>` -> `<webRoot>/<path>`, defaulting to
+  // index.html for the root and for directory-style URLs (because
+  // next.config.ts sets trailingSlash: true, so the router emits
+  // href="/" and href="/foo/").
+  //
+  // Packaged: extraResources copies apps/web/out -> resources/web,
+  // so webRoot = process.resourcesPath/web.
+  // Unpackaged (CONFLICT_FORCE_PROD=1 smoke test): monorepo apps/web/out.
+  const webRoot = app.isPackaged
+    ? path.join(process.resourcesPath, 'web')
+    : path.join(__dirname, '..', 'web', 'out');
+  log('Registering app:// protocol, webRoot:', webRoot);
+
+  if (!fs.existsSync(path.join(webRoot, 'index.html'))) {
+    log('ERROR: web index.html missing at', webRoot);
+    log(listDir(webRoot));
+    throw new Error(`Web root not found: ${webRoot}`);
   }
-  return indexPath;
+
+  protocol.handle('app', (request) => {
+    try {
+      const url = new URL(request.url);
+      // Strip the leading `/` and decode percent-encoding. Reject any
+      // path segment with `..` so we can't escape webRoot.
+      let relPath = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+      if (relPath.split('/').some((s) => s === '..')) {
+        return new Response('Forbidden', { status: 403 });
+      }
+      if (relPath === '' || relPath.endsWith('/')) {
+        relPath = path.posix.join(relPath, 'index.html');
+      }
+      const absPath = path.join(webRoot, relPath);
+      if (!fs.existsSync(absPath)) {
+        // Fall back to index.html for client-side routing (SPA) so refreshes
+        // on a sub-route still load the app.
+        const indexFallback = path.join(webRoot, 'index.html');
+        log('app:// 404 ->', relPath, '(falling back to index.html)');
+        return net.fetch(pathToFileURL(indexFallback).href);
+      }
+      return net.fetch(pathToFileURL(absPath).href);
+    } catch (e) {
+      log('app:// handler error:', e);
+      return new Response('Internal error', { status: 500 });
+    }
+  });
+
+  log('app:// protocol registered');
 }
 
 // --- Windows ---
@@ -215,10 +278,12 @@ function createMainWindow() {
     log('Loading dev UI:', devUrl);
     mainWindow.loadURL(devUrl);
   } else {
-    // Prod: load the statically-exported UI directly from disk.
-    const indexHtml = resolveWebIndexHtml();
-    log('Loading static UI:', indexHtml);
-    mainWindow.loadFile(indexHtml);
+    // Prod: load from our custom app:// scheme so absolute paths like
+    // /_next/static/... resolve against the bundled web root instead
+    // of the filesystem root.
+    const entryUrl = 'app://local/index.html';
+    log('Loading static UI via custom scheme:', entryUrl);
+    mainWindow.loadURL(entryUrl);
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -239,11 +304,17 @@ app.whenReady().then(async () => {
   try {
     createSplash();
 
-    // 1. Fastify server (bundled, runs in-process — no subprocess, no node
+    // 1. Register our custom app:// protocol handler (prod only — dev uses
+    //    the Next.js dev server on http://127.0.0.1:3000).
+    if (!isDev) {
+      registerAppProtocol();
+    }
+
+    // 2. Fastify server (bundled, runs in-process — no subprocess, no node
     //    binary needed). Everything except this is plain static files.
     await startServerInProcess();
 
-    // 2. Main window — loads the static UI directly from disk in prod, or
+    // 3. Main window — loads the static UI via app:// in prod, or
     //    the Next.js dev server in dev.
     createMainWindow();
   } catch (err) {

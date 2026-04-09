@@ -67,20 +67,29 @@ export function GlobeWrapper({
 
   // Load country polygons
   useEffect(() => {
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then((res) => res.json())
-      .then((worldData: Topology) => {
-        const land = feature(worldData, worldData.objects.countries);
-        setCountries(land as unknown as { features: CountryPolygon[] });
-      })
-      .catch(() => {
-        fetch('https://unpkg.com/world-atlas@2/countries-110m.json')
-          .then((res) => res.json())
-          .then((worldData: Topology) => {
-            const land = feature(worldData, worldData.objects.countries);
-            setCountries(land as unknown as { features: CountryPolygon[] });
-          });
-      });
+    // Load country polygons from our own bundled copy first, so the game
+    // works 100% offline. Fall back to jsDelivr, then unpkg, only if the
+    // local copy is missing (e.g. dev hot-reload before public/ is ready).
+    const tryLoad = async () => {
+      const urls = [
+        'countries-110m.json',
+        'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json',
+        'https://unpkg.com/world-atlas@2/countries-110m.json',
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const worldData: Topology = await res.json();
+          const land = feature(worldData, worldData.objects.countries);
+          setCountries(land as unknown as { features: CountryPolygon[] });
+          return;
+        } catch {
+          // try next
+        }
+      }
+    };
+    tryLoad();
   }, []);
 
   // Measure container
@@ -175,7 +184,7 @@ export function GlobeWrapper({
           ref={globeRef}
           width={dimensions.width}
           height={dimensions.height}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
+          globeImageUrl="earth-dark.jpg"
           backgroundColor="rgba(0,0,0,0)"
           atmosphereColor="#334155"
           atmosphereAltitude={0.12}

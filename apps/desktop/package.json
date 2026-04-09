@@ -28,22 +28,30 @@
       {
         "from": "../server/dist",
         "to": "server/dist",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../web/out",
         "to": "web",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": null,
       "category": "public.app-category.games",
       "identity": null
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": null
     },
     "dmg": {
@@ -55,7 +63,7 @@
     }
   },
   "devDependencies": {
-    "electron": "35.7.5",
-    "electron-builder": "^26.0.0"
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1"
   }
 }
