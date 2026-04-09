@@ -10,7 +10,11 @@ const USE_DB = !!process.env.DATABASE_URL;
 async function main() {
   const app = Fastify({ logger: true });
 
-  await app.register(cors, { origin: true });
+  // origin: true reflects the request's Origin header back, which works
+  // for http://localhost:3000 (dev) but Chromium sends `null` for file://
+  // pages inside Electron production builds. Accept anything — the server
+  // only listens on 127.0.0.1 anyway.
+  await app.register(cors, { origin: '*' });
   await app.register(websocket);
 
   if (USE_DB) {

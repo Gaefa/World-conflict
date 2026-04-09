@@ -6,10 +6,13 @@ const { pathToFileURL } = require('url');
 
 let mainWindow;
 let splashWindow;
+let devWebServerPid = null;
 
 const isDev = !app.isPackaged;
 const SERVER_PORT = 3002;
-const WEB_PORT = 3000;
+// Dev mode still uses Next.js dev server on :3000 (hot reload). Production
+// loads the statically-exported UI directly from disk via file://.
+const DEV_WEB_PORT = 3000;
 
 // --- Logging (to file + console) ---
 const LOG_FILE = (() => {
@@ -152,45 +155,17 @@ async function startServerInProcess() {
   log('Fastify server ready on', SERVER_PORT);
 }
 
-async function startWebInProcess() {
-  // Next.js standalone produces .next/standalone/apps/web/server.js
-  // (because of the monorepo layout).
-  const standaloneServer = getResourcePath('web', 'apps', 'web', 'server.js');
-  log('Loading Next.js standalone in-process:', standaloneServer);
-
-  if (!fs.existsSync(standaloneServer)) {
-    log('ERROR: web server.js missing');
+function resolveWebIndexHtml() {
+  // Production: statically exported UI is shipped as extraResources under
+  // `resources/web/index.html`. No Next.js runtime server is required.
+  const indexPath = getResourcePath('web', 'index.html');
+  log('Resolving static web entry:', indexPath);
+  if (!fs.existsSync(indexPath)) {
+    log('ERROR: web index.html missing');
     log(listDir(getResourcePath('web')));
-    log(listDir(getResourcePath('web', 'apps')));
-    log(listDir(getResourcePath('web', 'apps', 'web')));
-    throw new Error(`Web server not found: ${standaloneServer}`);
+    throw new Error(`Web entry not found: ${indexPath}`);
   }
-
-  // Next.js standalone server expects cwd to be its own directory so it can
-  // resolve ./.next relative paths.
-  const webCwd = path.dirname(standaloneServer);
-  try {
-    process.chdir(webCwd);
-    log('chdir to:', webCwd);
-  } catch (e) {
-    log('chdir failed:', e.message);
-  }
-
-  process.env.PORT = String(WEB_PORT);
-  process.env.HOSTNAME = '127.0.0.1';
-  process.env.NEXT_TELEMETRY_DISABLED = '1';
-  process.env.NODE_ENV = 'production';
-
-  try {
-    require(standaloneServer);
-    log('Web module evaluated — waiting for listen()...');
-  } catch (e) {
-    log('Failed to require web:', e);
-    throw e;
-  }
-
-  await waitForPort(WEB_PORT, 30000);
-  log('Next.js ready on', WEB_PORT);
+  return indexPath;
 }
 
 // --- Windows ---
@@ -234,11 +209,25 @@ function createMainWindow() {
     },
   });
 
-  mainWindow.loadURL(`http://127.0.0.1:${WEB_PORT}`);
+  if (isDev) {
+    // Dev: Next.js dev server must be running separately on :3000.
+    const devUrl = `http://127.0.0.1:${DEV_WEB_PORT}`;
+    log('Loading dev UI:', devUrl);
+    mainWindow.loadURL(devUrl);
+  } else {
+    // Prod: load the statically-exported UI directly from disk.
+    const indexHtml = resolveWebIndexHtml();
+    log('Loading static UI:', indexHtml);
+    mainWindow.loadFile(indexHtml);
+  }
 
   mainWindow.once('ready-to-show', () => {
     if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
     mainWindow.show();
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    log('did-fail-load:', code, desc, url);
   });
 
   mainWindow.on('closed', () => {
@@ -250,9 +239,12 @@ app.whenReady().then(async () => {
   try {
     createSplash();
 
+    // 1. Fastify server (bundled, runs in-process — no subprocess, no node
+    //    binary needed). Everything except this is plain static files.
     await startServerInProcess();
-    await startWebInProcess();
 
+    // 2. Main window — loads the static UI directly from disk in prod, or
+    //    the Next.js dev server in dev.
     createMainWindow();
   } catch (err) {
     log('Fatal startup error:', err);

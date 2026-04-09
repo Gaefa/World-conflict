@@ -42,14 +42,16 @@ jobs:
           echo "Server bundle size: $(wc -c < apps/server/dist/index.js) bytes"
         shell: bash
 
-      - name: Build web (standalone)
+      - name: Build web (static export)
         run: npx next build
         working-directory: apps/web
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
-      - name: Verify standalone output exists
-        run: ls -la apps/web/.next/standalone/ || echo "STANDALONE NOT FOUND"
+      - name: Verify static export exists
+        run: |
+          test -f apps/web/out/index.html || (echo "STATIC EXPORT NOT FOUND" && exit 1)
+          echo "Static export size: $(du -sh apps/web/out)"
         shell: bash
 
       - name: Build Electron (${{ matrix.platform }})

@@ -31,18 +31,8 @@
         "filter": ["**/*"]
       },
       {
-        "from": "../web/.next/standalone",
+        "from": "../web/out",
         "to": "web",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../web/.next/static",
-        "to": "web/apps/web/.next/static",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../web/public",
-        "to": "web/apps/web/public",
         "filter": ["**/*"]
       }
     ],
