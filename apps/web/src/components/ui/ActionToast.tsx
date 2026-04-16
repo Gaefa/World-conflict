@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { useLocaleStore } from '@/stores/localeStore';
 
 export function ActionToast() {
   const lastActionResult = useGameStore((s) => s.lastActionResult);
+  const { t } = useLocaleStore();
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(lastActionResult);
 
@@ -30,7 +32,7 @@ export function ActionToast() {
       >
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-sm font-bold ${current.success ? 'text-accent-green' : 'text-severity-high'}`}>
-            {current.success ? 'OK' : 'FAILED'}
+            {current.success ? t.toast_ok : t.toast_failed}
           </span>
           <span className="text-text-primary text-sm">{current.message}</span>
           <button

@@ -64,7 +64,7 @@ export function VictoryOverlay({ winner, winnerName, winnerFlag, condition, scor
           onClick={onClose}
           className="bg-accent-red hover:bg-red-600 text-white px-8 py-2 rounded font-bold uppercase tracking-wider transition-colors"
         >
-          OK
+          {t.victory_close}
         </button>
       </div>
     </div>

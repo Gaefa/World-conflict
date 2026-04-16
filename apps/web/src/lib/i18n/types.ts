@@ -1,20 +1,22 @@
 export type Locale = 'en' | 'ru';
 
 export interface Translations {
-  // App
+  // ── App ──
   app_name: string;
 
-  // Header
+  // ── Header ──
   header_active: string;
   header_players: string;
   header_tension_stable: string;
   header_tension_elevated: string;
   header_tension_critical: string;
+  header_tension_short: string;
   header_tick: string;
   header_pause: string;
   header_resume: string;
+  header_help: string;
 
-  // Session
+  // ── Session / Create modal ──
   session_create: string;
   session_new: string;
   session_name: string;
@@ -29,7 +31,7 @@ export interface Translations {
   session_starting: string;
   session_fill_fields: string;
 
-  // AI
+  // ── AI setup ──
   ai_opponents: string;
   ai_difficulty: string;
   ai_easy: string;
@@ -39,21 +41,28 @@ export interface Translations {
   ai_hard: string;
   ai_hard_desc: string;
 
-  // Country panel
-  panel_select_country: string;
-  panel_click_globe: string;
-  panel_power_index: string;
-  panel_gdp: string;
-  panel_military: string;
-  panel_stability: string;
-  panel_stability_critical: string;
-  panel_tech_level: string;
-  panel_population: string;
-  panel_gdp_growth: string;
-  panel_non_playable: string;
-  panel_non_playable_desc: string;
+  // ── Country panel (side) ──
+  cp_select_country: string;
+  cp_click_hint: string;
+  cp_nonplayable_desc: string;
+  cp_action_declare_war: string;
+  cp_action_declare_war_desc: string;
+  cp_action_sanctions: string;
+  cp_action_sanctions_desc: string;
+  cp_action_spy: string;
+  cp_action_spy_desc: string;
+  cp_action_trade: string;
+  cp_action_trade_desc: string;
+  cp_index_of_power: string;
+  cp_gdp: string;
+  cp_military: string;
+  cp_stability: string;
+  cp_stability_critical: string;
+  cp_tech_level: string;
+  cp_population: string;
+  cp_gdp_growth: string;
 
-  // Tabs
+  // ── Tabs ──
   tab_economy: string;
   tab_military: string;
   tab_diplomacy: string;
@@ -61,19 +70,294 @@ export interface Translations {
   tab_research: string;
   tab_domestic: string;
 
-  // Diplomacy
-  diplo_influence: string;
-  diplo_target: string;
-  diplo_actions: string;
-  diplo_propose_alliance: string;
-  diplo_declare_war: string;
-  diplo_sanctions: string;
-  diplo_trade: string;
-  diplo_active_relations: string;
-  diplo_no_relations: string;
-  diplo_propose_peace: string;
+  // ── BottomTabs shared ──
+  bt_click_country_hint: string;
+  bt_nonplayable_line1: string;
+  bt_nonplayable_line2: string;
 
-  // Relations
+  // ── Economy tab ──
+  econ_stat_gdp: string;
+  econ_stat_growth_prefix: string;
+  econ_stat_budget: string;
+  econ_stat_tax_rate: string;
+  econ_stat_inflation: string;
+  econ_inflation_high: string;
+  econ_inflation_stable: string;
+  econ_stat_debt: string;
+  econ_stat_trade_prefix: string;
+  econ_resource_shock: string;
+  econ_sub_overview: string;
+  econ_sub_resources: string;
+  econ_sub_policy: string;
+  econ_indicators: string;
+  econ_top_deficits: string;
+  econ_top_surpluses: string;
+  econ_no_deficits: string;
+  econ_no_surpluses: string;
+  econ_row_gdp_growth: string;
+  econ_row_trade_balance: string;
+  econ_row_debt_level: string;
+  econ_row_debt_of_gdp: string;
+  econ_bar_sanction_resilience: string;
+  econ_bar_sanction_evasion: string;
+  econ_build_stockpile_3: string;
+  econ_build_stockpile_6: string;
+  econ_cost_varies: string;
+  econ_reserves_3: string;
+  econ_reserves_6: string;
+  econ_tbl_resource: string;
+  econ_tbl_prod: string;
+  econ_tbl_cons: string;
+  econ_tbl_import: string;
+  econ_tbl_export: string;
+  econ_tbl_deficit: string;
+  econ_tbl_stock: string;
+  econ_processing_caps: string;
+  econ_policy_header: string;
+  econ_policy_invest: string;
+  econ_policy_invest_eff: string;
+  econ_policy_raise: string;
+  econ_policy_raise_cost: string;
+  econ_policy_raise_eff: string;
+  econ_policy_lower: string;
+  econ_policy_lower_cost: string;
+  econ_policy_lower_eff: string;
+  econ_sanction_evasion_header: string;
+  econ_shadow_fleet: string;
+  econ_shadow_fleet_eff: string;
+  econ_crypto: string;
+  econ_crypto_cost: string;
+  econ_crypto_eff: string;
+  econ_parallel: string;
+  econ_parallel_eff: string;
+  econ_substitution: string;
+  econ_substitution_eff: string;
+  econ_price_manip_header: string;
+  econ_production_cut: string;
+  econ_production_cut_cost: string;
+  econ_production_cut_eff: string;
+  econ_dump_stockpile: string;
+  econ_dump_stockpile_cost: string;
+  econ_dump_stockpile_eff: string;
+
+  // ── Resource categories & labels ──
+  resc_energy: string;
+  resc_industrial: string;
+  resc_precious: string;
+  resc_luxury: string;
+  resc_strategic: string;
+  resc_nuclear: string;
+  resc_forestry: string;
+  resc_agriculture: string;
+  resc_advanced: string;
+  rlabel_oil: string;
+  rlabel_gas: string;
+  rlabel_coal: string;
+  rlabel_iron: string;
+  rlabel_copper: string;
+  rlabel_aluminum: string;
+  rlabel_titanium: string;
+  rlabel_steel: string;
+  rlabel_gold: string;
+  rlabel_silver: string;
+  rlabel_palladium: string;
+  rlabel_platinum: string;
+  rlabel_diamonds: string;
+  rlabel_gemstones: string;
+  rlabel_rareEarth: string;
+  rlabel_lithium: string;
+  rlabel_cobalt: string;
+  rlabel_uranium: string;
+  rlabel_nuclearFuel: string;
+  rlabel_timber: string;
+  rlabel_rareWood: string;
+  rlabel_wheat: string;
+  rlabel_rice: string;
+  rlabel_fish: string;
+  rlabel_freshWater: string;
+  rlabel_fertilizer: string;
+  rlabel_electronics: string;
+  rlabel_semiconductors: string;
+  rlabel_refinedOil: string;
+  rlabel_luxuryGoods: string;
+  rlabel_weaponsComponents: string;
+  rlabel_pharmaceuticals: string;
+
+  // ── Military tab ──
+  mil_stat_army: string;
+  mil_stat_army_sub: string;
+  mil_stat_navy: string;
+  mil_stat_navy_sub: string;
+  mil_stat_airforce: string;
+  mil_stat_airforce_sub: string;
+  mil_stat_nuclear: string;
+  mil_stat_nuclear_sub: string;
+  mil_section_capabilities: string;
+  mil_bar_defense_budget: string;
+  mil_bar_tech_level: string;
+  mil_bar_total_power: string;
+  mil_section_buildup: string;
+  mil_recruit_infantry: string;
+  mil_recruit_infantry_eff: string;
+  mil_rnd: string;
+  mil_rnd_eff: string;
+  mil_arms_deal: string;
+  mil_arms_deal_cost: string;
+  mil_arms_deal_eff: string;
+  mil_section_ops: string;
+  mil_surgical: string;
+  mil_surgical_cost: string;
+  mil_surgical_eff: string;
+  mil_carpet: string;
+  mil_carpet_cost: string;
+  mil_carpet_eff: string;
+  mil_ground_invasion: string;
+  mil_ground_cost: string;
+  mil_ground_eff: string;
+  mil_naval_blockade: string;
+  mil_naval_cost: string;
+  mil_naval_eff: string;
+
+  // ── Diplomacy tab ──
+  diplo_stat_influence: string;
+  diplo_stat_influence_sub: string;
+  diplo_stat_power: string;
+  diplo_stat_power_sub: string;
+  diplo_stat_relations: string;
+  diplo_stat_relations_sub: string;
+  diplo_status: string;
+  diplo_bar_influence: string;
+  diplo_target_label: string;
+  diplo_click_country: string;
+  diplo_actions_label: string;
+  diplo_propose_alliance: string;
+  diplo_alliance_cost: string;
+  diplo_alliance_eff: string;
+  diplo_declare_war: string;
+  diplo_war_cost: string;
+  diplo_war_eff: string;
+  diplo_sanctions: string;
+  diplo_sanction_cost: string;
+  diplo_sanction_eff: string;
+  diplo_trade: string;
+  diplo_trade_cost: string;
+  diplo_trade_eff: string;
+  diplo_trade_with: string;
+  diplo_cancel: string;
+  diplo_you_offer: string;
+  diplo_you_request: string;
+  diplo_send_trade: string;
+  diplo_active_relations_header: string;
+
+  // ── Intelligence tab ──
+  intel_sub_overview: string;
+  intel_sub_dossiers: string;
+  intel_sub_ops: string;
+  intel_sub_covert: string;
+  intel_stat_counter: string;
+  intel_counter_strong: string;
+  intel_counter_moderate: string;
+  intel_counter_weak: string;
+  intel_stat_budget: string;
+  intel_stat_budget_sub: string;
+  intel_stat_active_ops: string;
+  intel_targets_suffix: string;
+  intel_stat_disinfo: string;
+  intel_stat_disinfo_sub: string;
+  intel_section_defense: string;
+  intel_bar_counter: string;
+  intel_boost_5: string;
+  intel_boost_5_eff: string;
+  intel_boost_15: string;
+  intel_boost_15_eff: string;
+  intel_budget_header: string;
+  intel_budget_note: string;
+  intel_no_dossiers: string;
+  intel_dossier_pts_suffix: string;
+  intel_active_ops_label: string;
+  intel_launch_spy_op: string;
+  intel_select_target_hint: string;
+  intel_op_humint: string;
+  intel_op_sigint: string;
+  intel_op_satellite: string;
+  intel_op_cyber: string;
+  intel_op_probe: string;
+  intel_op_effect_fmt: string;
+  intel_reveals_military: string;
+  intel_reveals_economy: string;
+  intel_reveals_resources: string;
+  intel_reveals_stability: string;
+  intel_reveals_diplomacy: string;
+  intel_disinfo_header: string;
+  intel_disinfo_desc: string;
+  intel_disinfo_active_fmt: string;
+  intel_covert_ops_label: string;
+  intel_sabotage_energy: string;
+  intel_sabotage_energy_eff: string;
+  intel_sabotage_military: string;
+  intel_sabotage_military_eff: string;
+  intel_cyber_attack: string;
+  intel_cyber_attack_cost: string;
+  intel_cyber_attack_eff: string;
+  intel_destabilization: string;
+  intel_incite: string;
+  intel_incite_cost: string;
+  intel_incite_eff: string;
+  intel_propaganda: string;
+  intel_propaganda_cost: string;
+  intel_propaganda_eff: string;
+  intel_black_ops: string;
+  intel_proxy_war: string;
+  intel_proxy_war_cost: string;
+  intel_proxy_war_eff: string;
+  intel_stage_coup: string;
+  intel_stage_coup_cost: string;
+  intel_stage_coup_eff: string;
+  intel_false_flag: string;
+  intel_false_flag_cost: string;
+  intel_false_flag_eff: string;
+  intel_category_economy: string;
+  intel_category_military: string;
+  intel_category_stability: string;
+
+  // ── Research tab ──
+  research_branch_military: string;
+  research_branch_economic: string;
+  research_branch_cyber: string;
+  research_branch_space: string;
+  research_branch_biotech: string;
+  research_branch_infra: string;
+  research_active_prefix: string;
+  research_months_remaining_fmt: string;
+  research_total_count_fmt: string;
+  research_tech_level_fmt: string;
+  research_needs_prefix: string;
+  research_done: string;
+  research_start_btn: string;
+  research_cancel_btn: string;
+
+  // ── Domestic tab ──
+  dom_stat_stability: string;
+  dom_stat_stability_critical: string;
+  dom_stat_stability_unstable: string;
+  dom_stat_stability_stable: string;
+  dom_stat_approval: string;
+  dom_stat_approval_sub: string;
+  dom_stat_tech_level: string;
+  dom_stat_tech_level_sub: string;
+  dom_indicators: string;
+  dom_bar_stability: string;
+  dom_bar_approval: string;
+  dom_bar_revolution: string;
+  dom_policies: string;
+  dom_social: string;
+  dom_social_eff: string;
+  dom_research_prog: string;
+  dom_research_prog_eff: string;
+  dom_emergency: string;
+  dom_emergency_eff: string;
+
+  // ── Relations panel ──
   rel_alliance: string;
   rel_war: string;
   rel_trade: string;
@@ -89,61 +373,32 @@ export interface Translations {
   rel_show_mine: string;
   rel_pending: string;
   rel_all: string;
+  rel_vs: string;
+  rel_no_relations: string;
+  rel_months_short: string;
 
-  // Economy
-  econ_gdp: string;
-  econ_growth: string;
-  econ_budget: string;
-  econ_tax_rate: string;
-  econ_inflation: string;
-  econ_trade_balance: string;
-  econ_set_tax: string;
-  econ_resources: string;
-  econ_surplus: string;
-  econ_deficit: string;
+  // ── Events feed ──
+  ev_title: string;
+  ev_severity_crit: string;
+  ev_severity_high: string;
+  ev_severity_medium: string;
+  ev_severity_low: string;
+  ev_count_fmt: string;
+  ev_none_yet: string;
+  ev_none_filter: string;
 
-  // Military
-  mil_army: string;
-  mil_navy: string;
-  mil_airforce: string;
-  mil_nukes: string;
-  mil_defense_budget: string;
-  mil_create_army: string;
-  mil_airstrike: string;
-  mil_invasion: string;
-  mil_blockade: string;
+  // ── Action toast ──
+  toast_ok: string;
+  toast_failed: string;
 
-  // Intelligence
-  intel_budget: string;
-  intel_counter: string;
-  intel_launch_op: string;
-  intel_boost_counter: string;
-  intel_disinfo: string;
-  intel_dossiers: string;
-
-  // Research
-  research_active: string;
-  research_completed: string;
-  research_available: string;
-  research_locked: string;
-  research_cancel: string;
-  research_start: string;
-  research_ticks: string;
-  research_cost: string;
-
-  // Events
-  events_title: string;
-  events_no_events: string;
-
-  // Misc
+  // ── Connection ──
   connected: string;
   disconnected: string;
-  click_country: string;
   create_game: string;
   language: string;
   select_language: string;
 
-  // Victory
+  // ── Victory ──
   victory_domination: string;
   victory_economic: string;
   victory_diplomatic: string;
@@ -151,12 +406,50 @@ export interface Translations {
   victory_survival: string;
   victory_title: string;
   victory_achieved: string;
+  victory_close: string;
 
-  // Leaderboard
+  // ── Leaderboard ──
   leaderboard_title: string;
   leaderboard_rank: string;
   leaderboard_country: string;
   leaderboard_power: string;
   leaderboard_gdp: string;
   leaderboard_military: string;
+
+  // ── Onboarding / Tutorial ──
+  onb_skip: string;
+  onb_next: string;
+  onb_prev: string;
+  onb_start_playing: string;
+  onb_step_of_fmt: string;
+  onb_welcome_title: string;
+  onb_welcome_body: string;
+  onb_step_globe_title: string;
+  onb_step_globe_body: string;
+  onb_step_session_title: string;
+  onb_step_session_body: string;
+  onb_step_header_title: string;
+  onb_step_header_body: string;
+  onb_step_tabs_title: string;
+  onb_step_tabs_body: string;
+  onb_step_economy_title: string;
+  onb_step_economy_body: string;
+  onb_step_military_title: string;
+  onb_step_military_body: string;
+  onb_step_diplomacy_title: string;
+  onb_step_diplomacy_body: string;
+  onb_step_intel_title: string;
+  onb_step_intel_body: string;
+  onb_step_research_title: string;
+  onb_step_research_body: string;
+  onb_step_domestic_title: string;
+  onb_step_domestic_body: string;
+  onb_step_events_title: string;
+  onb_step_events_body: string;
+  onb_step_victory_title: string;
+  onb_step_victory_body: string;
 }
+
+/** Tech tree translations: id -> { name, effects[] } — kept separate from the flat dictionary. */
+export type TechTranslation = { name: string; effects: string[] };
+export type TechTranslations = Record<string, TechTranslation>;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocaleStore } from '@/stores/localeStore';
 
 interface GameEvent {
   id: string;
@@ -11,12 +12,15 @@ interface GameEvent {
   tick: number;
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-function tickToDate(tick: number): string {
+const MONTH_NAMES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES_RU = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+function tickToDate(tick: number, locale: string): string {
   const startYear = 2026;
   const month = tick % 12;
   const year = startYear + Math.floor(tick / 12);
-  return `${MONTH_NAMES[month]} ${year}`;
+  const months = locale === 'ru' ? MONTH_NAMES_RU : MONTH_NAMES_EN;
+  return `${months[month]} ${year}`;
 }
 
 const SEVERITY_STYLES = {
@@ -42,11 +46,19 @@ interface EventsFeedProps {
 
 export function EventsFeed({ events }: EventsFeedProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [minSeverity, setMinSeverity] = useState<Severity>('medium'); // default: hide low
+  const [minSeverity, setMinSeverity] = useState<Severity>('medium');
+  const { t, locale } = useLocaleStore();
 
   const severityRank: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
   const minRank = severityRank[minSeverity] ?? 0;
   const filtered = events.filter(e => (severityRank[e.severity] ?? 0) >= minRank);
+
+  const sevLabels: Record<Severity, string> = {
+    critical: t.ev_severity_crit,
+    high: t.ev_severity_high,
+    medium: t.ev_severity_medium,
+    low: t.ev_severity_low,
+  };
 
   return (
     <aside
@@ -61,7 +73,7 @@ export function EventsFeed({ events }: EventsFeedProps) {
         <span className="text-text-muted text-xs">{collapsed ? '▶' : '◀'}</span>
         {!collapsed && (
           <h2 className="text-sm font-bold uppercase tracking-wider text-text-secondary">
-            Events Feed
+            {t.ev_title}
           </h2>
         )}
       </button>
@@ -85,21 +97,19 @@ export function EventsFeed({ events }: EventsFeedProps) {
                         : 'text-text-muted border-border-default bg-transparent opacity-40'
                   }`}
                 >
-                  {sev === 'critical' ? 'CRIT' : sev.toUpperCase()}
+                  {sevLabels[sev]}
                 </button>
               );
             })}
           </div>
           <div className="px-3 py-1 text-[10px] text-text-muted">
-            {filtered.length}/{events.length} events
+            {t.ev_count_fmt.replace('{shown}', String(filtered.length)).replace('{total}', String(events.length))}
           </div>
 
           <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
             {filtered.length === 0 ? (
               <div className="text-text-muted text-sm text-center py-8">
-                {events.length === 0
-                  ? 'No events yet. Start a game session to begin.'
-                  : 'No events match this filter.'}
+                {events.length === 0 ? t.ev_none_yet : t.ev_none_filter}
               </div>
             ) : (
               filtered.map((event) => (
@@ -109,7 +119,7 @@ export function EventsFeed({ events }: EventsFeedProps) {
                 >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-bold text-text-primary">{event.title}</span>
-                    <span className="text-text-muted font-mono text-[10px]">{tickToDate(event.tick)}</span>
+                    <span className="text-text-muted font-mono text-[10px]">{tickToDate(event.tick, locale ?? 'en')}</span>
                   </div>
                   <p className="text-text-secondary">{event.description}</p>
                 </div>

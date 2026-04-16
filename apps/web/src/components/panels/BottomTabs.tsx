@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { CountryState, PlayerAction, ResourceType, ResourceBalance, DiplomaticRelation } from '@conflict-game/shared-types';
 import { RelationsPanel } from './RelationsPanel';
+import { useLocaleStore } from '@/stores/localeStore';
+import type { Translations } from '@/lib/i18n/types';
 
 // Intel constants inlined to avoid Turbopack .js extension resolution issues with shared-types
 type SpyOpKey = 'humint' | 'sigint' | 'satellite' | 'cyber_espionage' | 'diplomatic_probe';
@@ -18,8 +20,20 @@ const SPY_OP_CONFIG_UI: Record<SpyOpKey, { cost: number; baseDuration: number; d
 
 const INTEL_THRESHOLDS_UI: Record<IntelLevelKey, number> = { none: 0, low: 25, medium: 60, high: 120, full: 200 };
 
-const TABS = ['Economy', 'Military', 'Diplomacy', 'Intelligence', 'Research', 'Domestic'] as const;
-type Tab = (typeof TABS)[number];
+const TAB_KEYS = ['Economy', 'Military', 'Diplomacy', 'Intelligence', 'Research', 'Domestic'] as const;
+type Tab = (typeof TAB_KEYS)[number];
+
+function getTabLabel(t: Translations, tab: Tab): string {
+  const map: Record<Tab, string> = {
+    Economy: t.tab_economy,
+    Military: t.tab_military,
+    Diplomacy: t.tab_diplomacy,
+    Intelligence: t.tab_intelligence,
+    Research: t.tab_research,
+    Domestic: t.tab_domestic,
+  };
+  return map[tab];
+}
 
 interface BottomTabsProps {
   country: CountryState | null;
@@ -53,6 +67,7 @@ export function BottomTabs({
   currentTick,
 }: BottomTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
+  const { t } = useLocaleStore();
 
   // Can this player perform actions? Only on their own country during active game
   const isOwnCountry = playerCountryCode && country?.code === playerCountryCode;
@@ -65,7 +80,7 @@ export function BottomTabs({
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">
-                {activeTab}
+                {getTabLabel(t, activeTab)}
                 {country && (
                   <span className="ml-2 text-text-muted font-normal">— {countryName || country.code}</span>
                 )}
@@ -80,8 +95,8 @@ export function BottomTabs({
             {country ? (
               isNonPlayable ? (
                 <div className="text-text-muted text-sm">
-                  <p className="mb-2">{countryName || country.code} — Non-playable territory</p>
-                  <p>Start a game session and conquer this territory to see full details.</p>
+                  <p className="mb-2">{countryName || country.code} — {t.bt_nonplayable_line1}</p>
+                  <p>{t.bt_nonplayable_line2}</p>
                 </div>
               ) : (
                 <TabContent
@@ -98,7 +113,7 @@ export function BottomTabs({
               )
             ) : (
               <p className="text-text-muted text-sm">
-                Click a country on the globe to view details.
+                {t.bt_click_country_hint}
               </p>
             )}
           </div>
@@ -107,7 +122,7 @@ export function BottomTabs({
 
       <div className="h-10 bg-bg-secondary border-t border-border-default flex items-center px-4 shrink-0">
         <div className="flex gap-4">
-          {TABS.map((tab) => (
+          {TAB_KEYS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
@@ -117,7 +132,7 @@ export function BottomTabs({
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              {tab}
+              {getTabLabel(t, tab)}
             </button>
           ))}
         </div>
@@ -229,39 +244,36 @@ function TabContent({ tab, ...props }: TabProps & { tab: Tab }) {
   }
 }
 
-// ── Resource UI constants ──
+// ── Resource UI helpers ──
 
-const RESOURCE_CATEGORIES: { label: string; icon: string; resources: ResourceType[] }[] = [
-  { label: 'Energy', icon: '\u26FD', resources: ['oil', 'gas', 'coal', 'refinedOil'] },
-  { label: 'Industrial', icon: '\u2699', resources: ['iron', 'copper', 'aluminum', 'titanium', 'steel'] },
-  { label: 'Precious', icon: '\u2B50', resources: ['gold', 'silver', 'palladium', 'platinum'] },
-  { label: 'Luxury', icon: '\u2666', resources: ['diamonds', 'gemstones', 'luxuryGoods'] },
-  { label: 'Strategic', icon: '\u26A0', resources: ['rareEarth', 'lithium', 'cobalt'] },
-  { label: 'Nuclear', icon: '\u2622', resources: ['uranium', 'nuclearFuel'] },
-  { label: 'Forestry', icon: '\u{1F332}', resources: ['timber', 'rareWood'] },
-  { label: 'Agriculture', icon: '\u{1F33E}', resources: ['wheat', 'rice', 'fish', 'freshWater', 'fertilizer'] },
-  { label: 'Advanced', icon: '\u{1F4BB}', resources: ['electronics', 'semiconductors', 'weaponsComponents', 'pharmaceuticals'] },
-];
+function getResourceCategories(t: Translations): { label: string; icon: string; resources: ResourceType[] }[] {
+  return [
+    { label: t.resc_energy, icon: '\u26FD', resources: ['oil', 'gas', 'coal', 'refinedOil'] },
+    { label: t.resc_industrial, icon: '\u2699', resources: ['iron', 'copper', 'aluminum', 'titanium', 'steel'] },
+    { label: t.resc_precious, icon: '\u2B50', resources: ['gold', 'silver', 'palladium', 'platinum'] },
+    { label: t.resc_luxury, icon: '\u2666', resources: ['diamonds', 'gemstones', 'luxuryGoods'] },
+    { label: t.resc_strategic, icon: '\u26A0', resources: ['rareEarth', 'lithium', 'cobalt'] },
+    { label: t.resc_nuclear, icon: '\u2622', resources: ['uranium', 'nuclearFuel'] },
+    { label: t.resc_forestry, icon: '\u{1F332}', resources: ['timber', 'rareWood'] },
+    { label: t.resc_agriculture, icon: '\u{1F33E}', resources: ['wheat', 'rice', 'fish', 'freshWater', 'fertilizer'] },
+    { label: t.resc_advanced, icon: '\u{1F4BB}', resources: ['electronics', 'semiconductors', 'weaponsComponents', 'pharmaceuticals'] },
+  ];
+}
 
-const RESOURCE_LABELS: Record<string, string> = {
-  oil: 'Oil', gas: 'Gas', coal: 'Coal', iron: 'Iron', copper: 'Copper',
-  aluminum: 'Aluminum', titanium: 'Titanium', gold: 'Gold', silver: 'Silver',
-  palladium: 'Palladium', platinum: 'Platinum', diamonds: 'Diamonds',
-  gemstones: 'Gems', rareEarth: 'Rare Earth', lithium: 'Lithium',
-  cobalt: 'Cobalt', uranium: 'Uranium', timber: 'Timber', rareWood: 'Rare Wood',
-  wheat: 'Wheat', rice: 'Rice', fish: 'Fish', freshWater: 'Water',
-  steel: 'Steel', electronics: 'Electronics', semiconductors: 'Semicon.',
-  refinedOil: 'Refined Oil', nuclearFuel: 'Nuclear Fuel',
-  luxuryGoods: 'Luxury', weaponsComponents: 'Weapons', pharmaceuticals: 'Pharma',
-  fertilizer: 'Fertilizer',
-};
-
-const ECON_SUB_TABS = ['Overview', 'Resources', 'Policy'] as const;
-type EconSubTab = (typeof ECON_SUB_TABS)[number];
+function getResourceLabel(t: Translations, key: string): string {
+  return (t as any)['rlabel_' + key] ?? key;
+}
 
 function EconomyTab({ country, canAct, onAction, hasSanctions }: TabProps) {
+  const { t } = useLocaleStore();
   const e = country.economy;
-  const [subTab, setSubTab] = useState<EconSubTab>('Overview');
+  const [subTab, setSubTab] = useState<'overview' | 'resources' | 'policy'>('overview');
+
+  const econSubTabs: { key: 'overview' | 'resources' | 'policy'; label: string }[] = [
+    { key: 'overview', label: t.econ_sub_overview },
+    { key: 'resources', label: t.econ_sub_resources },
+    { key: 'policy', label: t.econ_sub_policy },
+  ];
 
   const act = (action: PlayerAction) => {
     if (canAct && onAction) onAction(action);
@@ -271,44 +283,45 @@ function EconomyTab({ country, canAct, onAction, hasSanctions }: TabProps) {
     <div>
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-2 mb-3">
-        <StatCard label="GDP" value={`$${(e.gdp / 1000).toFixed(1)}T`} sub={`Growth: ${e.gdpGrowth.toFixed(1)}%`} />
-        <StatCard label="Budget" value={`$${e.budget.toFixed(0)}B`} sub={`Tax rate: ${(e.taxRate * 100).toFixed(0)}%`} />
-        <StatCard label="Inflation" value={`${e.inflation.toFixed(1)}%`} sub={e.inflation > 5 ? 'High' : 'Stable'} />
-        <StatCard label="Debt/GDP" value={`${(e.debtToGdp * 100).toFixed(0)}%`} sub={`Trade: ${e.tradeBalance > 0 ? '+' : ''}${e.tradeBalance.toFixed(0)}B`} />
+        <StatCard label={t.econ_stat_gdp} value={`$${(e.gdp / 1000).toFixed(1)}T`} sub={`${t.econ_stat_growth_prefix}: ${e.gdpGrowth.toFixed(1)}%`} />
+        <StatCard label={t.econ_stat_budget} value={`$${e.budget.toFixed(0)}B`} sub={`${t.econ_stat_tax_rate}: ${(e.taxRate * 100).toFixed(0)}%`} />
+        <StatCard label={t.econ_stat_inflation} value={`${e.inflation.toFixed(1)}%`} sub={e.inflation > 5 ? t.econ_inflation_high : t.econ_inflation_stable} />
+        <StatCard label={t.econ_stat_debt} value={`${(e.debtToGdp * 100).toFixed(0)}%`} sub={`${t.econ_stat_trade_prefix}: ${e.tradeBalance > 0 ? '+' : ''}${e.tradeBalance.toFixed(0)}B`} />
       </div>
 
       {/* Resource shock indicator */}
       {e.resourceShockMultiplier > 1.05 && (
         <div className="bg-severity-high/20 border border-severity-high/40 rounded px-3 py-1.5 mb-3 text-xs text-severity-high">
-          Resource shock: x{e.resourceShockMultiplier.toFixed(2)} — deficits are slowing GDP growth
+          {t.econ_resource_shock}: x{e.resourceShockMultiplier.toFixed(2)}
         </div>
       )}
 
       {/* Sub-tabs */}
       <div className="flex gap-1 mb-3 border-b border-border-default pb-1">
-        {ECON_SUB_TABS.map(t => (
+        {econSubTabs.map(st => (
           <button
-            key={t}
-            onClick={() => setSubTab(t)}
+            key={st.key}
+            onClick={() => setSubTab(st.key)}
             className={`px-3 py-1 text-xs font-bold uppercase rounded-t transition-colors ${
-              subTab === t
+              subTab === st.key
                 ? 'bg-bg-card text-text-primary border border-border-default border-b-0'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
-            {t}
+            {st.label}
           </button>
         ))}
       </div>
 
-      {subTab === 'Overview' && <EconOverviewSub country={country} />}
-      {subTab === 'Resources' && <EconResourcesSub country={country} canAct={canAct} act={act} />}
-      {subTab === 'Policy' && <EconPolicySub country={country} canAct={canAct} act={act} hasSanctions={hasSanctions} />}
+      {subTab === 'overview' && <EconOverviewSub country={country} />}
+      {subTab === 'resources' && <EconResourcesSub country={country} canAct={canAct} act={act} />}
+      {subTab === 'policy' && <EconPolicySub country={country} canAct={canAct} act={act} hasSanctions={hasSanctions} />}
     </div>
   );
 }
 
 function EconOverviewSub({ country }: { country: CountryState }) {
+  const { t } = useLocaleStore();
   const e = country.economy;
   const rs = country.resourceState ?? {};
 
@@ -331,22 +344,22 @@ function EconOverviewSub({ country }: { country: CountryState }) {
   return (
     <div className="grid grid-cols-3 gap-4">
       <div>
-        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Indicators</h4>
-        <EffectRow label="GDP Growth" value={`${e.gdpGrowth > 0 ? '+' : ''}${e.gdpGrowth.toFixed(1)}%`} positive={e.gdpGrowth > 0} />
-        <EffectRow label="Trade Balance" value={`${e.tradeBalance > 0 ? '+' : ''}$${e.tradeBalance.toFixed(0)}B`} positive={e.tradeBalance > 0} />
-        <EffectRow label="Debt Level" value={`${(e.debtToGdp * 100).toFixed(0)}% of GDP`} positive={e.debtToGdp < 0.6} />
-        <Bar label="Sanction Resilience" value={e.sanctionResilience} max={100} color="bg-accent-amber" />
-        <Bar label="Sanction Evasion" value={e.sanctionEvasion} max={100} color="bg-accent-blue" />
+        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_indicators}</h4>
+        <EffectRow label={t.econ_row_gdp_growth} value={`${e.gdpGrowth > 0 ? '+' : ''}${e.gdpGrowth.toFixed(1)}%`} positive={e.gdpGrowth > 0} />
+        <EffectRow label={t.econ_row_trade_balance} value={`${e.tradeBalance > 0 ? '+' : ''}$${e.tradeBalance.toFixed(0)}B`} positive={e.tradeBalance > 0} />
+        <EffectRow label={t.econ_row_debt_level} value={`${(e.debtToGdp * 100).toFixed(0)}${t.econ_row_debt_of_gdp}`} positive={e.debtToGdp < 0.6} />
+        <Bar label={t.econ_bar_sanction_resilience} value={e.sanctionResilience} max={100} color="bg-accent-amber" />
+        <Bar label={t.econ_bar_sanction_evasion} value={e.sanctionEvasion} max={100} color="bg-accent-blue" />
       </div>
       <div>
-        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Top Deficits</h4>
+        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_top_deficits}</h4>
         {deficits.length === 0 ? (
-          <p className="text-text-muted text-xs">No resource deficits</p>
+          <p className="text-text-muted text-xs">{t.econ_no_deficits}</p>
         ) : (
           deficits.map(([r, b]) => (
             <EffectRow
               key={r}
-              label={RESOURCE_LABELS[r] ?? r}
+              label={getResourceLabel(t, r)}
               value={`-${(b?.deficit ?? 0).toFixed(1)}/mo`}
               positive={false}
             />
@@ -354,16 +367,16 @@ function EconOverviewSub({ country }: { country: CountryState }) {
         )}
       </div>
       <div>
-        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Top Surpluses</h4>
+        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_top_surpluses}</h4>
         {surpluses.length === 0 ? (
-          <p className="text-text-muted text-xs">No resource surpluses</p>
+          <p className="text-text-muted text-xs">{t.econ_no_surpluses}</p>
         ) : (
           surpluses.map(([r, b]) => {
             const surplus = (b?.production ?? 0) - (b?.consumption ?? 0) - (b?.exported ?? 0);
             return (
               <EffectRow
                 key={r}
-                label={RESOURCE_LABELS[r] ?? r}
+                label={getResourceLabel(t, r)}
                 value={`+${surplus.toFixed(1)}/mo`}
                 positive={true}
               />
@@ -376,7 +389,9 @@ function EconOverviewSub({ country }: { country: CountryState }) {
 }
 
 function EconResourcesSub({ country, canAct, act }: { country: CountryState; canAct: boolean; act: (a: PlayerAction) => void }) {
+  const { t } = useLocaleStore();
   const rs = country.resourceState ?? {};
+  const resourceCategories = getResourceCategories(t);
 
   return (
     <div className="space-y-3">
@@ -384,16 +399,16 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
       {canAct && (
         <div className="flex gap-2 mb-2">
           <ActionBtn
-            label="Build Stockpile (3mo)"
-            cost="$ varies"
-            effect="Reserves +3 months"
+            label={t.econ_build_stockpile_3}
+            cost={t.econ_cost_varies}
+            effect={t.econ_reserves_3}
             disabled={!canAct || country.economy.budget < 5}
             onClick={() => act({ type: 'build_stockpile', resource: 'oil', months: 3 })}
           />
           <ActionBtn
-            label="Build Stockpile (6mo)"
-            cost="$ varies"
-            effect="Reserves +6 months"
+            label={t.econ_build_stockpile_6}
+            cost={t.econ_cost_varies}
+            effect={t.econ_reserves_6}
             disabled={!canAct || country.economy.budget < 10}
             onClick={() => act({ type: 'build_stockpile', resource: 'oil', months: 6 })}
           />
@@ -405,17 +420,17 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
         <table className="w-full text-xs">
           <thead>
             <tr className="text-text-muted uppercase border-b border-border-default">
-              <th className="text-left py-1 pr-2">Resource</th>
-              <th className="text-right px-1">Prod</th>
-              <th className="text-right px-1">Cons</th>
-              <th className="text-right px-1">Import</th>
-              <th className="text-right px-1">Export</th>
-              <th className="text-right px-1">Deficit</th>
-              <th className="text-right pl-1">Stock</th>
+              <th className="text-left py-1 pr-2">{t.econ_tbl_resource}</th>
+              <th className="text-right px-1">{t.econ_tbl_prod}</th>
+              <th className="text-right px-1">{t.econ_tbl_cons}</th>
+              <th className="text-right px-1">{t.econ_tbl_import}</th>
+              <th className="text-right px-1">{t.econ_tbl_export}</th>
+              <th className="text-right px-1">{t.econ_tbl_deficit}</th>
+              <th className="text-right pl-1">{t.econ_tbl_stock}</th>
             </tr>
           </thead>
           <tbody>
-            {RESOURCE_CATEGORIES.map(cat => {
+            {resourceCategories.map(cat => {
               const hasAny = cat.resources.some(r => {
                 const b = rs[r];
                 return b && (b.production > 0 || b.consumption > 0 || b.imported > 0 || b.deficit > 0);
@@ -433,7 +448,7 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
                   const hasDeficit = b.deficit > 0;
                   return (
                     <tr key={r} className={`border-b border-border-default/30 ${hasDeficit ? 'bg-severity-high/10' : ''}`}>
-                      <td className="py-0.5 pr-2 text-text-primary">{RESOURCE_LABELS[r] ?? r}</td>
+                      <td className="py-0.5 pr-2 text-text-primary">{getResourceLabel(t, r)}</td>
                       <td className="text-right px-1 font-mono text-accent-green">{b.production > 0 ? b.production.toFixed(1) : '-'}</td>
                       <td className="text-right px-1 font-mono text-text-secondary">{b.consumption > 0 ? b.consumption.toFixed(1) : '-'}</td>
                       <td className="text-right px-1 font-mono text-accent-blue">{b.imported > 0 ? b.imported.toFixed(1) : '-'}</td>
@@ -456,11 +471,11 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
       {/* Processing capabilities */}
       {country.processingCapabilities.length > 0 && (
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-1">Processing Capabilities</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-1">{t.econ_processing_caps}</h4>
           <div className="flex flex-wrap gap-1">
             {country.processingCapabilities.map(p => (
               <span key={p} className="bg-bg-card border border-border-default rounded px-2 py-0.5 text-xs text-accent-blue">
-                {RESOURCE_LABELS[p] ?? p}
+                {getResourceLabel(t, p)}
               </span>
             ))}
           </div>
@@ -471,80 +486,81 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
 }
 
 function EconPolicySub({ country, canAct, act, hasSanctions }: { country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasSanctions?: boolean }) {
+  const { t } = useLocaleStore();
   const e = country.economy;
 
   return (
     <div className={`grid ${hasSanctions ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
       <div>
-        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Economic Policy</h4>
+        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_policy_header}</h4>
         <ActionBtn
-          label="Invest in Economy"
+          label={t.econ_policy_invest}
           cost="$10B"
-          effect="GDP growth +1%"
+          effect={t.econ_policy_invest_eff}
           disabled={!canAct || e.budget < 10}
           onClick={() => act({ type: 'allocate_budget', category: 'economy', amount: 10 })}
         />
         <ActionBtn
-          label="Raise Taxes (+5%)"
-          cost="Approval -1.5"
-          effect="Revenue +5%"
+          label={t.econ_policy_raise}
+          cost={t.econ_policy_raise_cost}
+          effect={t.econ_policy_raise_eff}
           disabled={!canAct || e.taxRate >= 0.95}
           onClick={() => act({ type: 'set_tax_rate', rate: Math.min(1, e.taxRate + 0.05) })}
         />
         <ActionBtn
-          label="Lower Taxes (-5%)"
-          cost="Revenue -5%"
-          effect="Approval +1.5"
+          label={t.econ_policy_lower}
+          cost={t.econ_policy_lower_cost}
+          effect={t.econ_policy_lower_eff}
           disabled={!canAct || e.taxRate <= 0.05}
           onClick={() => act({ type: 'set_tax_rate', rate: Math.max(0, e.taxRate - 0.05) })}
         />
       </div>
       {hasSanctions && (
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Sanction Evasion</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_sanction_evasion_header}</h4>
           <ActionBtn
-            label="Shadow Fleet"
+            label={t.econ_shadow_fleet}
             cost="$5B"
-            effect="Evasion +15"
+            effect={t.econ_shadow_fleet_eff}
             disabled={!canAct || e.budget < 5}
             onClick={() => act({ type: 'sanction_evasion', method: 'shadow_fleet' })}
           />
           <ActionBtn
-            label="Crypto Bypass"
-            cost="$3B, Tech 5+"
-            effect="Evasion +10"
+            label={t.econ_crypto}
+            cost={t.econ_crypto_cost}
+            effect={t.econ_crypto_eff}
             disabled={!canAct || e.budget < 3 || country.techLevel < 5}
             onClick={() => act({ type: 'sanction_evasion', method: 'crypto_bypass' })}
           />
           <ActionBtn
-            label="Parallel Import"
+            label={t.econ_parallel}
             cost="$8B"
-            effect="Evasion +20 (needs trade partner)"
+            effect={t.econ_parallel_eff}
             disabled={!canAct || e.budget < 8}
             onClick={() => act({ type: 'sanction_evasion', method: 'parallel_import' })}
           />
           <ActionBtn
-            label="Import Substitution"
+            label={t.econ_substitution}
             cost="$20B"
-            effect="Evasion +25, Resilience +10"
+            effect={t.econ_substitution_eff}
             disabled={!canAct || e.budget < 20}
             onClick={() => act({ type: 'sanction_evasion', method: 'import_substitution' })}
           />
         </div>
       )}
       <div>
-        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Price Manipulation</h4>
+        <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_price_manip_header}</h4>
         <ActionBtn
-          label="Production Cut (OPEC)"
-          cost="Production -30%"
-          effect="Price +20-40% ???"
+          label={t.econ_production_cut}
+          cost={t.econ_production_cut_cost}
+          effect={t.econ_production_cut_eff}
           disabled={!canAct}
           onClick={() => act({ type: 'manipulate_price', resource: 'oil', direction: 'increase', method: 'production_cut' })}
         />
         <ActionBtn
-          label="Dump Stockpile"
-          cost="Stockpile depleted"
-          effect="Price -15-30% ???"
+          label={t.econ_dump_stockpile}
+          cost={t.econ_dump_stockpile_cost}
+          effect={t.econ_dump_stockpile_eff}
           disabled={!canAct}
           onClick={() => act({ type: 'manipulate_price', resource: 'oil', direction: 'decrease', method: 'dump_stockpile' })}
         />
@@ -554,6 +570,7 @@ function EconPolicySub({ country, canAct, act, hasSanctions }: { country: Countr
 }
 
 function MilitaryTab({ country, canAct, onAction, targetCountryCode, playerCountryCode }: TabProps) {
+  const { t } = useLocaleStore();
   const m = country.military;
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
 
@@ -564,71 +581,71 @@ function MilitaryTab({ country, canAct, onAction, targetCountryCode, playerCount
   return (
     <div>
       <div className="grid grid-cols-4 gap-2 mb-4">
-        <StatCard label="Army" value={formatNum(m.army)} sub="Personnel" />
-        <StatCard label="Navy" value={formatNum(m.navy)} sub="Vessels" />
-        <StatCard label="Air Force" value={formatNum(m.airForce)} sub="Aircraft" />
-        <StatCard label="Nuclear" value={m.nuclearWeapons.toString()} sub="Warheads" />
+        <StatCard label={t.mil_stat_army} value={formatNum(m.army)} sub={t.mil_stat_army_sub} />
+        <StatCard label={t.mil_stat_navy} value={formatNum(m.navy)} sub={t.mil_stat_navy_sub} />
+        <StatCard label={t.mil_stat_airforce} value={formatNum(m.airForce)} sub={t.mil_stat_airforce_sub} />
+        <StatCard label={t.mil_stat_nuclear} value={m.nuclearWeapons.toString()} sub={t.mil_stat_nuclear_sub} />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Capabilities</h4>
-          <Bar label="Defense Budget" value={m.defenseBudget} max={800} color="bg-accent-amber" />
-          <Bar label="Tech Level" value={m.techLevel} max={10} color="bg-accent-blue" />
-          <Bar label="Total Power" value={country.indexOfPower} max={100} color="bg-accent-red" />
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_capabilities}</h4>
+          <Bar label={t.mil_bar_defense_budget} value={m.defenseBudget} max={800} color="bg-accent-amber" />
+          <Bar label={t.mil_bar_tech_level} value={m.techLevel} max={10} color="bg-accent-blue" />
+          <Bar label={t.mil_bar_total_power} value={country.indexOfPower} max={100} color="bg-accent-red" />
         </div>
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Build Up</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_buildup}</h4>
           <ActionBtn
-            label="Recruit Infantry"
+            label={t.mil_recruit_infantry}
             cost="$5B"
-            effect="Army +5K, Stability -1"
+            effect={t.mil_recruit_infantry_eff}
             disabled={!canAct || country.economy.budget < 5}
             onClick={() => act({ type: 'allocate_budget', category: 'military', amount: 5 })}
           />
           <ActionBtn
-            label="Military R&D"
+            label={t.mil_rnd}
             cost="$10B"
-            effect="Tech +0.3, ???"
+            effect={t.mil_rnd_eff}
             disabled={!canAct || country.economy.budget < 10}
             onClick={() => act({ type: 'research_tech', category: 'military' })}
           />
           <ActionBtn
-            label="Arms Deal"
-            cost="Sells weapons"
-            effect="Revenue +$, Target army +"
+            label={t.mil_arms_deal}
+            cost={t.mil_arms_deal_cost}
+            effect={t.mil_arms_deal_eff}
             disabled={!canAct || !hasTarget || m.techLevel < 3}
             onClick={() => act({ type: 'arms_deal', targetCountry: targetCountryCode!, amount: 5 })}
           />
         </div>
         <div>
           <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">
-            Operations {hasTarget ? `→ ${targetCountryCode}` : ''}
+            {t.mil_section_ops} {hasTarget ? `→ ${targetCountryCode}` : ''}
           </h4>
           <ActionBtn
-            label="Surgical Airstrike"
-            cost="$2B, 5 aircraft"
-            effect="Target damaged, ???"
+            label={t.mil_surgical}
+            cost={t.mil_surgical_cost}
+            effect={t.mil_surgical_eff}
             disabled={!canAct || !hasTarget || m.airForce < 10 || country.economy.budget < 2}
             onClick={() => act({ type: 'airstrike', targetCountry: targetCountryCode!, intensity: 'surgical' })}
           />
           <ActionBtn
-            label="Carpet Bombing"
-            cost="$20B, 50 aircraft"
-            effect="Massive damage, ???"
+            label={t.mil_carpet}
+            cost={t.mil_carpet_cost}
+            effect={t.mil_carpet_eff}
             disabled={!canAct || !hasTarget || m.airForce < 50 || country.economy.budget < 20}
             onClick={() => act({ type: 'airstrike', targetCountry: targetCountryCode!, intensity: 'carpet' })}
           />
           <ActionBtn
-            label="Ground Invasion (25%)"
-            cost="Budget + troops"
-            effect="Capture territory, ???"
+            label={t.mil_ground_invasion}
+            cost={t.mil_ground_cost}
+            effect={t.mil_ground_eff}
             disabled={!canAct || !hasTarget || m.army < 1000}
             onClick={() => act({ type: 'invasion', targetCountry: targetCountryCode!, committedForces: 0.25 })}
           />
           <ActionBtn
-            label="Naval Blockade"
-            cost="$5B, 20 vessels"
-            effect="Target trade -$15B"
+            label={t.mil_naval_blockade}
+            cost={t.mil_naval_cost}
+            effect={t.mil_naval_eff}
             disabled={!canAct || !hasTarget || m.navy < 20 || country.economy.budget < 5}
             onClick={() => act({ type: 'naval_blockade', targetCountry: targetCountryCode! })}
           />
@@ -638,21 +655,8 @@ function MilitaryTab({ country, canAct, onAction, targetCountryCode, playerCount
   );
 }
 
-// Resources available for trade (most relevant ones)
-const TRADEABLE_RESOURCES: { resource: ResourceType; label: string }[] = [
-  { resource: 'oil', label: 'Oil' }, { resource: 'gas', label: 'Gas' },
-  { resource: 'coal', label: 'Coal' }, { resource: 'iron', label: 'Iron' },
-  { resource: 'copper', label: 'Copper' }, { resource: 'aluminum', label: 'Aluminum' },
-  { resource: 'titanium', label: 'Titanium' }, { resource: 'gold', label: 'Gold' },
-  { resource: 'rareEarth', label: 'Rare Earth' }, { resource: 'lithium', label: 'Lithium' },
-  { resource: 'uranium', label: 'Uranium' }, { resource: 'wheat', label: 'Wheat' },
-  { resource: 'rice', label: 'Rice' }, { resource: 'timber', label: 'Timber' },
-  { resource: 'steel', label: 'Steel' }, { resource: 'electronics', label: 'Electronics' },
-  { resource: 'semiconductors', label: 'Semicon.' }, { resource: 'refinedOil', label: 'Ref. Oil' },
-  { resource: 'weaponsComponents', label: 'Weapons' }, { resource: 'pharmaceuticals', label: 'Pharma' },
-];
-
 function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCountryCode, relations, currentTick }: TabProps) {
+  const { t } = useLocaleStore();
   const [showTrade, setShowTrade] = useState(false);
   const [tradeOffers, setTradeOffers] = useState<Record<string, number>>({});
   const [tradeRequests, setTradeRequests] = useState<Record<string, number>>({});
@@ -681,50 +685,64 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
   // Get player's surpluses and deficits for trade hints
   const rs = country.resourceState ?? {};
 
+  // Tradeable resources with localized labels
+  const tradeableResources: { resource: ResourceType; label: string }[] = [
+    { resource: 'oil', label: getResourceLabel(t, 'oil') }, { resource: 'gas', label: getResourceLabel(t, 'gas') },
+    { resource: 'coal', label: getResourceLabel(t, 'coal') }, { resource: 'iron', label: getResourceLabel(t, 'iron') },
+    { resource: 'copper', label: getResourceLabel(t, 'copper') }, { resource: 'aluminum', label: getResourceLabel(t, 'aluminum') },
+    { resource: 'titanium', label: getResourceLabel(t, 'titanium') }, { resource: 'gold', label: getResourceLabel(t, 'gold') },
+    { resource: 'rareEarth', label: getResourceLabel(t, 'rareEarth') }, { resource: 'lithium', label: getResourceLabel(t, 'lithium') },
+    { resource: 'uranium', label: getResourceLabel(t, 'uranium') }, { resource: 'wheat', label: getResourceLabel(t, 'wheat') },
+    { resource: 'rice', label: getResourceLabel(t, 'rice') }, { resource: 'timber', label: getResourceLabel(t, 'timber') },
+    { resource: 'steel', label: getResourceLabel(t, 'steel') }, { resource: 'electronics', label: getResourceLabel(t, 'electronics') },
+    { resource: 'semiconductors', label: getResourceLabel(t, 'semiconductors') }, { resource: 'refinedOil', label: getResourceLabel(t, 'refinedOil') },
+    { resource: 'weaponsComponents', label: getResourceLabel(t, 'weaponsComponents') }, { resource: 'pharmaceuticals', label: getResourceLabel(t, 'pharmaceuticals') },
+  ];
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <StatCard label="Influence" value={country.diplomaticInfluence.toFixed(0)} sub="Global standing" />
-        <StatCard label="Power Index" value={country.indexOfPower.toFixed(1)} sub="Composite score" />
-        <StatCard label="Relations" value="—" sub="Select target" />
+        <StatCard label={t.diplo_stat_influence} value={country.diplomaticInfluence.toFixed(0)} sub={t.diplo_stat_influence_sub} />
+        <StatCard label={t.diplo_stat_power} value={country.indexOfPower.toFixed(1)} sub={t.diplo_stat_power_sub} />
+        <StatCard label={t.diplo_stat_relations} value="—" sub={t.diplo_stat_relations_sub} />
       </div>
 
       {!showTrade ? (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Status</h4>
-            <Bar label="Diplomatic Influence" value={country.diplomaticInfluence} max={100} color="bg-accent-blue" />
-            <EffectRow label="Target" value={hasTarget ? targetCountryCode! : 'Click a country'} />
+            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.diplo_status}</h4>
+            <Bar label={t.diplo_bar_influence} value={country.diplomaticInfluence} max={100} color="bg-accent-blue" />
+            <EffectRow label={t.diplo_target_label} value={hasTarget ? targetCountryCode! : t.diplo_click_country} />
           </div>
           <div>
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">
-              Actions {hasTarget ? `\u2192 ${targetCountryCode}` : ''}
+              {t.diplo_actions_label} {hasTarget ? `\u2192 ${targetCountryCode}` : ''}
             </h4>
             <ActionBtn
-              label="Propose Alliance"
-              cost="Influence -5"
-              effect="Mutual defense"
+              label={t.diplo_propose_alliance}
+              cost={t.diplo_alliance_cost}
+              effect={t.diplo_alliance_eff}
               disabled={!canAct || !hasTarget || country.diplomaticInfluence < 5}
               onClick={() => act({ type: 'propose_alliance', targetCountry: targetCountryCode! })}
             />
             <ActionBtn
-              label="Declare War"
-              cost="Stability -15"
-              effect="Approval -10, ???"
+              label={t.diplo_declare_war}
+              cost={t.diplo_war_cost}
+              effect={t.diplo_war_eff}
               disabled={!canAct || !hasTarget}
               onClick={() => act({ type: 'declare_war', targetCountry: targetCountryCode! })}
             />
             <ActionBtn
-              label="Impose Sanctions"
-              cost="Influence -3"
-              effect="Target GDP -0.5%"
+              label={t.diplo_sanctions}
+              cost={t.diplo_sanction_cost}
+              effect={t.diplo_sanction_eff}
               disabled={!canAct || !hasTarget || country.diplomaticInfluence < 3}
               onClick={() => act({ type: 'propose_sanction', targetCountry: targetCountryCode! })}
             />
             <ActionBtn
-              label="Trade Agreement"
-              cost="Influence -2"
-              effect="Open trade panel"
+              label={t.diplo_trade}
+              cost={t.diplo_trade_cost}
+              effect={t.diplo_trade_eff}
               disabled={!canAct || !hasTarget || country.diplomaticInfluence < 2}
               onClick={() => setShowTrade(true)}
             />
@@ -735,18 +753,18 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
         <div>
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold uppercase text-text-secondary">
-              Trade with {targetCountryCode}
+              {t.diplo_trade_with} {targetCountryCode}
             </h4>
             <button onClick={() => setShowTrade(false)} className="text-text-muted hover:text-text-primary text-xs">
-              Cancel
+              {t.diplo_cancel}
             </button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {/* YOU OFFER */}
             <div>
-              <h5 className="text-xs font-bold text-accent-green mb-2">You Offer (surplus)</h5>
+              <h5 className="text-xs font-bold text-accent-green mb-2">{t.diplo_you_offer}</h5>
               <div className="space-y-1 max-h-32 overflow-y-auto">
-                {TRADEABLE_RESOURCES.map(({ resource, label }) => {
+                {tradeableResources.map(({ resource, label }) => {
                   const bal = rs[resource];
                   const surplus = bal ? bal.production - bal.consumption : 0;
                   if (surplus <= 0) return null;
@@ -770,9 +788,9 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
             </div>
             {/* YOU REQUEST */}
             <div>
-              <h5 className="text-xs font-bold text-severity-high mb-2">You Request (deficit)</h5>
+              <h5 className="text-xs font-bold text-severity-high mb-2">{t.diplo_you_request}</h5>
               <div className="space-y-1 max-h-32 overflow-y-auto">
-                {TRADEABLE_RESOURCES.map(({ resource, label }) => {
+                {tradeableResources.map(({ resource, label }) => {
                   const bal = rs[resource];
                   const deficit = bal ? bal.deficit : 0;
                   if (deficit <= 0) return null;
@@ -799,7 +817,7 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
             disabled={Object.values(tradeOffers).every(v => !v) && Object.values(tradeRequests).every(v => !v)}
             className="mt-3 w-full bg-accent-red hover:bg-accent-red/80 disabled:bg-bg-card disabled:opacity-50 text-text-primary text-sm font-bold py-2 rounded transition-colors"
           >
-            SEND TRADE PROPOSAL (12 months)
+            {t.diplo_send_trade}
           </button>
         </div>
       )}
@@ -807,7 +825,7 @@ function DiplomacyTab({ country, canAct, onAction, targetCountryCode, playerCoun
       {/* Relations overview */}
       {relations && relations.length > 0 && (
         <div className="mt-4 border-t border-border-default pt-3">
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Active Relations</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.diplo_active_relations_header}</h4>
           <RelationsPanel
             relations={relations}
             playerCountryCode={playerCountryCode ?? null}
@@ -827,15 +845,29 @@ const INTEL_LEVEL_COLORS: Record<IntelLevelKey, string> = {
   full: 'text-accent-blue',
 };
 
-const SPY_OP_LABELS: Record<SpyOpKey, string> = {
-  humint: 'HUMINT Agent',
-  sigint: 'SIGINT Intercept',
-  satellite: 'Satellite Recon',
-  cyber_espionage: 'Cyber Espionage',
-  diplomatic_probe: 'Diplomatic Probe',
-};
+function getSpyOpLabels(t: Translations): Record<SpyOpKey, string> {
+  return {
+    humint: t.intel_op_humint,
+    sigint: t.intel_op_sigint,
+    satellite: t.intel_op_satellite,
+    cyber_espionage: t.intel_op_cyber,
+    diplomatic_probe: t.intel_op_probe,
+  };
+}
+
+function getRevealsLabel(t: Translations, reveals: string): string {
+  const map: Record<string, string> = {
+    military: t.intel_reveals_military,
+    economy: t.intel_reveals_economy,
+    resources: t.intel_reveals_resources,
+    stability: t.intel_reveals_stability,
+    diplomacy: t.intel_reveals_diplomacy,
+  };
+  return map[reveals] ?? reveals;
+}
 
 function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerCountryCode }: TabProps) {
+  const { t } = useLocaleStore();
   const [intelSub, setIntelSub] = useState<'overview' | 'dossiers' | 'ops' | 'covert'>('overview');
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
   const intel = country.intel;
@@ -845,10 +877,10 @@ function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerC
   };
 
   const subTabs = [
-    { key: 'overview' as const, label: 'Overview' },
-    { key: 'dossiers' as const, label: 'Dossiers' },
-    { key: 'ops' as const, label: 'Spy Ops' },
-    { key: 'covert' as const, label: 'Covert Ops' },
+    { key: 'overview' as const, label: t.intel_sub_overview },
+    { key: 'dossiers' as const, label: t.intel_sub_dossiers },
+    { key: 'ops' as const, label: t.intel_sub_ops },
+    { key: 'covert' as const, label: t.intel_sub_covert },
   ];
 
   return (
@@ -871,6 +903,7 @@ function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerC
 }
 
 function IntelOverviewSub({ country, intel, canAct, act }: { country: CountryState; intel: CountryState['intel']; canAct: boolean; act: (a: PlayerAction) => void }) {
+  const { t } = useLocaleStore();
   const counterIntel = intel?.counterIntel ?? 0;
   const intelBudget = intel?.intelBudget ?? 0;
   const activeOpsCount = intel ? Object.values(intel.dossiers).reduce((n, d) => n + d.activeOps.length, 0) : 0;
@@ -880,25 +913,25 @@ function IntelOverviewSub({ country, intel, canAct, act }: { country: CountrySta
   return (
     <div>
       <div className="grid grid-cols-4 gap-2 mb-4">
-        <StatCard label="Counter-Intel" value={counterIntel.toFixed(0)} sub={counterIntel > 60 ? 'Strong' : counterIntel > 30 ? 'Moderate' : 'Weak'} />
-        <StatCard label="Intel Budget" value={`$${intelBudget.toFixed(0)}B/mo`} sub="Monthly cost" />
-        <StatCard label="Active Ops" value={String(activeOpsCount)} sub={`${dossierCount} targets` } />
-        <StatCard label="Disinfo" value={String(disinfoCount)} sub="Active campaigns" />
+        <StatCard label={t.intel_stat_counter} value={counterIntel.toFixed(0)} sub={counterIntel > 60 ? t.intel_counter_strong : counterIntel > 30 ? t.intel_counter_moderate : t.intel_counter_weak} />
+        <StatCard label={t.intel_stat_budget} value={`$${intelBudget.toFixed(0)}B/mo`} sub={t.intel_stat_budget_sub} />
+        <StatCard label={t.intel_stat_active_ops} value={String(activeOpsCount)} sub={`${dossierCount} ${t.intel_targets_suffix}`} />
+        <StatCard label={t.intel_stat_disinfo} value={String(disinfoCount)} sub={t.intel_stat_disinfo_sub} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Defense</h4>
-          <Bar label="Counter-Intelligence" value={counterIntel} max={100} color="bg-accent-blue" />
-          <ActionBtn label="Boost Counter-Intel (+$5B)" cost="$5B" effect="CI +10, detect spies"
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_section_defense}</h4>
+          <Bar label={t.intel_bar_counter} value={counterIntel} max={100} color="bg-accent-blue" />
+          <ActionBtn label={t.intel_boost_5} cost="$5B" effect={t.intel_boost_5_eff}
             disabled={!canAct || country.economy.budget < 5}
             onClick={() => act({ type: 'boost_counter_intel', amount: 5 })} />
-          <ActionBtn label="Boost Counter-Intel (+$15B)" cost="$15B" effect="CI +30, strong defense"
+          <ActionBtn label={t.intel_boost_15} cost="$15B" effect={t.intel_boost_15_eff}
             disabled={!canAct || country.economy.budget < 15}
             onClick={() => act({ type: 'boost_counter_intel', amount: 15 })} />
         </div>
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Intel Budget</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_budget_header}</h4>
           <div className="flex gap-1 mb-2">
             {[0, 2, 5, 10, 20].map(b => (
               <button key={b} onClick={() => act({ type: 'set_intel_budget', budget: b })}
@@ -910,7 +943,7 @@ function IntelOverviewSub({ country, intel, canAct, act }: { country: CountrySta
               </button>
             ))}
           </div>
-          <p className="text-text-muted text-xs">Intel budget is deducted from national budget each tick. Higher budget improves spy op effectiveness.</p>
+          <p className="text-text-muted text-xs">{t.intel_budget_note}</p>
         </div>
       </div>
     </div>
@@ -918,11 +951,21 @@ function IntelOverviewSub({ country, intel, canAct, act }: { country: CountrySta
 }
 
 function IntelDossiersSub({ country, intel }: { country: CountryState; intel: CountryState['intel'] }) {
+  const { t } = useLocaleStore();
   const dossiers = intel?.dossiers ?? {};
   const entries = Object.entries(dossiers);
+  const spyOpLabels = getSpyOpLabels(t);
+
+  const revealsCategoryLabels: Record<string, string> = {
+    economy: t.intel_reveals_economy,
+    military: t.intel_reveals_military,
+    resources: t.intel_reveals_resources,
+    stability: t.intel_reveals_stability,
+    diplomacy: t.intel_reveals_diplomacy,
+  };
 
   if (entries.length === 0) {
-    return <p className="text-text-muted text-sm">No intelligence gathered yet. Launch spy operations to build dossiers on other countries.</p>;
+    return <p className="text-text-muted text-sm">{t.intel_no_dossiers}</p>;
   }
 
   return (
@@ -942,7 +985,7 @@ function IntelDossiersSub({ country, intel }: { country: CountryState; intel: Co
             <div className="flex items-center justify-between mb-1">
               <span className="text-text-primary text-sm font-bold">{code}</span>
               <span className={`text-xs font-bold uppercase ${levelColor}`}>
-                {dossier.level} ({dossier.intelPoints} pts)
+                {dossier.level} ({dossier.intelPoints} {t.intel_dossier_pts_suffix})
               </span>
             </div>
             <div className="h-1 bg-bg-secondary rounded-full overflow-hidden mb-1.5">
@@ -953,13 +996,13 @@ function IntelDossiersSub({ country, intel }: { country: CountryState; intel: Co
                 <span key={cat} className={`text-xs px-1.5 py-0.5 rounded ${
                   revealed[cat] ? 'bg-accent-green/20 text-accent-green' : 'bg-bg-secondary text-text-muted'
                 }`}>
-                  {revealed[cat] ? '\u2713' : '?'} {cat}
+                  {revealed[cat] ? '\u2713' : '?'} {revealsCategoryLabels[cat] ?? cat}
                 </span>
               ))}
             </div>
             {dossier.activeOps.length > 0 && (
               <div className="mt-1.5 text-xs text-text-muted">
-                Active ops: {dossier.activeOps.map(op => SPY_OP_LABELS[op.type as SpyOpKey]).join(', ')}
+                {t.intel_active_ops_label} {dossier.activeOps.map(op => spyOpLabels[op.type as SpyOpKey]).join(', ')}
               </div>
             )}
           </div>
@@ -972,45 +1015,57 @@ function IntelDossiersSub({ country, intel }: { country: CountryState; intel: Co
 function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode }: {
   country: CountryState; intel: CountryState['intel']; canAct: boolean; act: (a: PlayerAction) => void; hasTarget: boolean; targetCountryCode?: string | null;
 }) {
+  const { t } = useLocaleStore();
+
   const spyOps: { key: SpyOpKey; label: string }[] = [
-    { key: 'humint', label: 'HUMINT Agent' },
-    { key: 'sigint', label: 'SIGINT Intercept' },
-    { key: 'satellite', label: 'Satellite Recon' },
-    { key: 'cyber_espionage', label: 'Cyber Espionage' },
-    { key: 'diplomatic_probe', label: 'Diplomatic Probe' },
+    { key: 'humint', label: t.intel_op_humint },
+    { key: 'sigint', label: t.intel_op_sigint },
+    { key: 'satellite', label: t.intel_op_satellite },
+    { key: 'cyber_espionage', label: t.intel_op_cyber },
+    { key: 'diplomatic_probe', label: t.intel_op_probe },
   ];
+
+  const categoryLabels: Record<string, string> = {
+    economy: t.intel_category_economy,
+    military: t.intel_category_military,
+    stability: t.intel_category_stability,
+  };
 
   return (
     <div>
       <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">
-        Launch Spy Operation {hasTarget ? <span className="text-accent-red">→ {targetCountryCode}</span> : <span className="text-text-muted">(select target on globe)</span>}
+        {t.intel_launch_spy_op} {hasTarget ? <span className="text-accent-red">→ {targetCountryCode}</span> : <span className="text-text-muted">{t.intel_select_target_hint}</span>}
       </h4>
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         {spyOps.map(({ key, label }) => {
           const cfg = SPY_OP_CONFIG_UI[key];
           const techOk = (country.techLevel ?? 1) >= cfg.techRequired;
           const budgetOk = country.economy.budget >= cfg.cost;
+          const effectStr = t.intel_op_effect_fmt
+            .replace('{duration}', String(cfg.baseDuration))
+            .replace('{reveals}', getRevealsLabel(t, cfg.reveals))
+            .replace('{risk}', (cfg.detectionRisk * 100).toFixed(0));
           return (
             <ActionBtn key={key} label={label}
               cost={`$${cfg.cost}B${cfg.techRequired > 1 ? `, Tech ${cfg.techRequired}+` : ''}`}
-              effect={`${cfg.baseDuration}mo, reveals ${cfg.reveals}, risk ${(cfg.detectionRisk * 100).toFixed(0)}%`}
+              effect={effectStr}
               disabled={!canAct || !hasTarget || !techOk || !budgetOk}
               onClick={() => act({ type: 'launch_spy_op', targetCountry: targetCountryCode!, opType: key as any })} />
           );
         })}
       </div>
 
-      <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Disinformation Campaigns</h4>
-      <p className="text-text-muted text-xs mb-2">Make your own data appear different to enemy spies.</p>
+      <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_disinfo_header}</h4>
+      <p className="text-text-muted text-xs mb-2">{t.intel_disinfo_desc}</p>
       <div className="grid grid-cols-3 gap-1.5">
         {(['economy', 'military', 'stability'] as const).map(cat => {
           const existing = intel?.disinfo.find(d => d.category === cat);
           return (
             <div key={cat} className="bg-bg-card border border-border-default rounded p-2">
-              <div className="text-xs font-bold text-text-secondary uppercase mb-1">{cat}</div>
+              <div className="text-xs font-bold text-text-secondary uppercase mb-1">{categoryLabels[cat] ?? cat}</div>
               {existing ? (
                 <div className="text-xs text-accent-amber">
-                  Active: x{existing.multiplier.toFixed(1)} ({existing.duration}mo)
+                  {t.intel_disinfo_active_fmt.replace('{mult}', existing.multiplier.toFixed(1)).replace('{dur}', String(existing.duration))}
                 </div>
               ) : (
                 <div className="flex gap-1">
@@ -1035,41 +1090,43 @@ function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode
 function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: {
   country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasTarget: boolean; targetCountryCode?: string | null;
 }) {
+  const { t } = useLocaleStore();
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-4">
         <div>
           <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">
-            Covert Ops {hasTarget ? `→ ${targetCountryCode}` : ''}
+            {t.intel_covert_ops_label} {hasTarget ? `→ ${targetCountryCode}` : ''}
           </h4>
-          <ActionBtn label="Sabotage (Energy)" cost="$5B" effect="Blackouts, GDP -3%, ???"
+          <ActionBtn label={t.intel_sabotage_energy} cost="$5B" effect={t.intel_sabotage_energy_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 5}
             onClick={() => act({ type: 'sabotage', targetCountry: targetCountryCode!, target: 'energy' })} />
-          <ActionBtn label="Sabotage (Military)" cost="$5B" effect="Arms destroyed, ???"
+          <ActionBtn label={t.intel_sabotage_military} cost="$5B" effect={t.intel_sabotage_military_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 5}
             onClick={() => act({ type: 'sabotage', targetCountry: targetCountryCode!, target: 'military' })} />
-          <ActionBtn label="Cyber Attack" cost="$3B, Tech 3+" effect="Systems disrupted, ???"
+          <ActionBtn label={t.intel_cyber_attack} cost={t.intel_cyber_attack_cost} effect={t.intel_cyber_attack_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 3 || country.techLevel < 3}
             onClick={() => act({ type: 'cyber_attack', targetCountry: targetCountryCode!, target: 'financial' })} />
         </div>
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Destabilization</h4>
-          <ActionBtn label="Incite Rebellion" cost="$8B, Infl. -3" effect="Revolt, ???"
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_destabilization}</h4>
+          <ActionBtn label={t.intel_incite} cost={t.intel_incite_cost} effect={t.intel_incite_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 8 || country.diplomaticInfluence < 3}
             onClick={() => act({ type: 'incite_rebellion', targetCountry: targetCountryCode! })} />
-          <ActionBtn label="Propaganda" cost="$3B" effect="Target destabilized, ???"
+          <ActionBtn label={t.intel_propaganda} cost={t.intel_propaganda_cost} effect={t.intel_propaganda_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 3}
             onClick={() => act({ type: 'propaganda', targetCountry: targetCountryCode!, narrative: 'anti_government' })} />
         </div>
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Black Ops</h4>
-          <ActionBtn label="Proxy War" cost="$10B+, Infl. -5" effect="Fund rebels, ???"
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_black_ops}</h4>
+          <ActionBtn label={t.intel_proxy_war} cost={t.intel_proxy_war_cost} effect={t.intel_proxy_war_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 10 || country.diplomaticInfluence < 5}
             onClick={() => act({ type: 'proxy_war', targetCountry: targetCountryCode!, funding: 10 })} />
-          <ActionBtn label="Stage Coup" cost="$15B, Infl. -10" effect="Overthrow gov, ???"
+          <ActionBtn label={t.intel_stage_coup} cost={t.intel_stage_coup_cost} effect={t.intel_stage_coup_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 15 || country.diplomaticInfluence < 10}
             onClick={() => act({ type: 'coup_attempt', targetCountry: targetCountryCode! })} />
-          <ActionBtn label="False Flag" cost="$12B, Infl. -8" effect="Frame another, ???"
+          <ActionBtn label={t.intel_false_flag} cost={t.intel_false_flag_cost} effect={t.intel_false_flag_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 12 || country.diplomaticInfluence < 8}
             onClick={() => act({ type: 'false_flag', targetCountry: targetCountryCode!, framedCountry: 'RU', operation: 'terrorist_attack' })} />
         </div>
@@ -1082,14 +1139,16 @@ function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: 
 
 type TechBranchKey = 'military' | 'economic' | 'cyber' | 'space' | 'biotech' | 'infrastructure';
 
-const BRANCH_META: { key: TechBranchKey; label: string; icon: string }[] = [
-  { key: 'military', label: 'Military', icon: '\u2694\uFE0F' },
-  { key: 'economic', label: 'Economic', icon: '\u{1F4B0}' },
-  { key: 'cyber', label: 'Cyber', icon: '\u{1F4BB}' },
-  { key: 'space', label: 'Space', icon: '\u{1F680}' },
-  { key: 'biotech', label: 'Biotech', icon: '\u{1F9EC}' },
-  { key: 'infrastructure', label: 'Infra', icon: '\u{1F3D7}\uFE0F' },
-];
+function getBranchMeta(t: Translations): { key: TechBranchKey; label: string; icon: string }[] {
+  return [
+    { key: 'military', label: t.research_branch_military, icon: '\u2694\uFE0F' },
+    { key: 'economic', label: t.research_branch_economic, icon: '\u{1F4B0}' },
+    { key: 'cyber', label: t.research_branch_cyber, icon: '\u{1F4BB}' },
+    { key: 'space', label: t.research_branch_space, icon: '\u{1F680}' },
+    { key: 'biotech', label: t.research_branch_biotech, icon: '\u{1F9EC}' },
+    { key: 'infrastructure', label: t.research_branch_infra, icon: '\u{1F3D7}\uFE0F' },
+  ];
+}
 
 interface TechDefUI { id: string; branch: TechBranchKey; tier: number; name: string; icon: string; cost: number; researchTicks: number; prerequisites: string[]; effectDesc: string[] }
 
@@ -1139,23 +1198,33 @@ const TECH_TREE_UI: TechDefUI[] = [
 ];
 
 function ResearchTab({ country, canAct, onAction }: TabProps) {
+  const { t, tech: techTranslations } = useLocaleStore();
   const [selectedBranch, setSelectedBranch] = useState<TechBranchKey>('military');
-  const tech = country.tech;
-  const researched = tech?.researchedTechs ?? [];
-  const activeResearch = tech?.activeResearch;
+  const countryTech = country.tech;
+  const researched = countryTech?.researchedTechs ?? [];
+  const activeResearch = countryTech?.activeResearch;
+  const branchMeta = getBranchMeta(t);
 
   const act = (action: PlayerAction) => {
     if (canAct && onAction) onAction(action);
   };
 
-  const branchTechs = TECH_TREE_UI.filter(t => t.branch === selectedBranch).sort((a, b) => a.tier - b.tier);
+  const branchTechs = TECH_TREE_UI.filter(td => td.branch === selectedBranch).sort((a, b) => a.tier - b.tier);
   const totalResearched = researched.length;
 
-  const getTechStatus = (t: TechDefUI): 'completed' | 'researching' | 'available' | 'locked' => {
-    if (researched.includes(t.id)) return 'completed';
-    if (activeResearch?.techId === t.id) return 'researching';
-    if (t.prerequisites.every(p => researched.includes(p))) return 'available';
+  const getTechStatus = (td: TechDefUI): 'completed' | 'researching' | 'available' | 'locked' => {
+    if (researched.includes(td.id)) return 'completed';
+    if (activeResearch?.techId === td.id) return 'researching';
+    if (td.prerequisites.every(p => researched.includes(p))) return 'available';
     return 'locked';
+  };
+
+  const getTechName = (td: TechDefUI): string => {
+    return techTranslations[td.id]?.name ?? td.name;
+  };
+
+  const getTechEffects = (td: TechDefUI): string[] => {
+    return techTranslations[td.id]?.effects ?? td.effectDesc;
   };
 
   return (
@@ -1164,12 +1233,12 @@ function ResearchTab({ country, canAct, onAction }: TabProps) {
       {activeResearch && (
         <div className="bg-accent-amber/10 border border-accent-amber/30 rounded p-2 mb-3 flex items-center justify-between">
           <div>
-            <span className="text-accent-amber text-xs font-bold uppercase">Researching: </span>
+            <span className="text-accent-amber text-xs font-bold uppercase">{t.research_active_prefix} </span>
             <span className="text-text-primary text-sm font-bold">
-              {TECH_TREE_UI.find(t => t.id === activeResearch.techId)?.name ?? activeResearch.techId}
+              {(() => { const td = TECH_TREE_UI.find(td => td.id === activeResearch.techId); return td ? getTechName(td) : activeResearch.techId; })()}
             </span>
             <span className="text-text-muted text-xs ml-2">
-              {activeResearch.ticksRemaining}/{activeResearch.totalTicks} months remaining
+              {t.research_months_remaining_fmt.replace('{rem}', String(activeResearch.ticksRemaining)).replace('{total}', String(activeResearch.totalTicks))}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -1180,7 +1249,7 @@ function ResearchTab({ country, canAct, onAction }: TabProps) {
             <button disabled={!canAct}
               onClick={() => act({ type: 'cancel_research' })}
               className={`text-xs px-2 py-0.5 rounded border border-severity-high/50 text-severity-high ${!canAct ? 'opacity-50' : 'hover:bg-severity-high/20 cursor-pointer'}`}>
-              Cancel
+              {t.research_cancel_btn}
             </button>
           </div>
         </div>
@@ -1188,9 +1257,9 @@ function ResearchTab({ country, canAct, onAction }: TabProps) {
 
       {/* Branch selector */}
       <div className="flex gap-1 mb-3">
-        {BRANCH_META.map(b => {
-          const branchTechIds = TECH_TREE_UI.filter(t => t.branch === b.key);
-          const done = branchTechIds.filter(t => researched.includes(t.id)).length;
+        {branchMeta.map(b => {
+          const branchTechIds = TECH_TREE_UI.filter(td => td.branch === b.key);
+          const done = branchTechIds.filter(td => researched.includes(td.id)).length;
           return (
             <button key={b.key} onClick={() => setSelectedBranch(b.key)}
               className={`flex-1 text-xs py-1.5 rounded border transition-colors ${
@@ -1207,58 +1276,58 @@ function ResearchTab({ country, canAct, onAction }: TabProps) {
 
       {/* Stats bar */}
       <div className="flex justify-between text-xs text-text-muted mb-2">
-        <span>Total: {totalResearched}/{TECH_TREE_UI.length} techs</span>
-        <span>Tech Level: {country.techLevel.toFixed(0)}/10</span>
+        <span>{t.research_total_count_fmt.replace('{done}', String(totalResearched)).replace('{total}', String(TECH_TREE_UI.length))}</span>
+        <span>{t.research_tech_level_fmt.replace('{lvl}', country.techLevel.toFixed(0))}</span>
       </div>
 
       {/* Tech list for selected branch */}
       <div className="space-y-1.5">
-        {branchTechs.map(t => {
-          const status = getTechStatus(t);
-          const canStart = status === 'available' && !activeResearch && canAct && country.economy.budget >= t.cost;
-          const missingPrereqs = t.prerequisites.filter(p => !researched.includes(p));
+        {branchTechs.map(td => {
+          const status = getTechStatus(td);
+          const canStart = status === 'available' && !activeResearch && canAct && country.economy.budget >= td.cost;
+          const missingPrereqs = td.prerequisites.filter(p => !researched.includes(p));
 
           return (
-            <div key={t.id} className={`flex items-center gap-2 border rounded p-2 transition-colors ${
+            <div key={td.id} className={`flex items-center gap-2 border rounded p-2 transition-colors ${
               status === 'completed' ? 'border-accent-green/40 bg-accent-green/5' :
               status === 'researching' ? 'border-accent-amber/40 bg-accent-amber/5 animate-pulse' :
               status === 'available' ? 'border-border-default bg-bg-card' :
               'border-border-default/50 bg-bg-card/50 opacity-60'
             }`}>
-              <span className="text-lg">{t.icon}</span>
+              <span className="text-lg">{td.icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${status === 'completed' ? 'text-accent-green' : status === 'researching' ? 'text-accent-amber' : 'text-text-primary'}`}>
-                    {t.name}
+                    {getTechName(td)}
                   </span>
                   {status === 'completed' && <span className="text-accent-green text-xs">{'\u2713'}</span>}
                   {status === 'researching' && <span className="text-accent-amber text-xs">...</span>}
                   {status === 'locked' && missingPrereqs.length > 0 && (
                     <span className="text-text-muted text-xs">
-                      Needs: {missingPrereqs.map(p => TECH_TREE_UI.find(x => x.id === p)?.name ?? p).join(', ')}
+                      {t.research_needs_prefix} {missingPrereqs.map(p => { const prereq = TECH_TREE_UI.find(x => x.id === p); return prereq ? getTechName(prereq) : p; }).join(', ')}
                     </span>
                   )}
                 </div>
                 <div className="text-xs text-text-muted truncate">
-                  {t.effectDesc.join(' \u2022 ')}
+                  {getTechEffects(td).join(' \u2022 ')}
                 </div>
               </div>
               <div className="text-right shrink-0">
                 {status === 'completed' ? (
-                  <span className="text-accent-green text-xs font-bold">DONE</span>
+                  <span className="text-accent-green text-xs font-bold">{t.research_done}</span>
                 ) : status === 'researching' ? (
                   <span className="text-accent-amber text-xs">{activeResearch?.ticksRemaining}mo</span>
                 ) : (
                   <div className="text-right">
-                    <div className="text-xs text-accent-amber">${t.cost}B</div>
-                    <div className="text-xs text-text-muted">{t.researchTicks}mo</div>
+                    <div className="text-xs text-accent-amber">${td.cost}B</div>
+                    <div className="text-xs text-text-muted">{td.researchTicks}mo</div>
                   </div>
                 )}
               </div>
               {canStart && (
-                <button onClick={() => act({ type: 'research_tech', techId: t.id })}
+                <button onClick={() => act({ type: 'research_tech', techId: td.id })}
                   className="text-xs px-2 py-1 rounded bg-accent-red/20 border border-accent-red/50 text-accent-red hover:bg-accent-red/30 cursor-pointer shrink-0">
-                  Research
+                  {t.research_start_btn}
                 </button>
               )}
             </div>
@@ -1270,6 +1339,7 @@ function ResearchTab({ country, canAct, onAction }: TabProps) {
 }
 
 function DomesticTab({ country, canAct, onAction }: TabProps) {
+  const { t } = useLocaleStore();
   const act = (action: PlayerAction) => {
     if (canAct && onAction) onAction(action);
   };
@@ -1279,37 +1349,37 @@ function DomesticTab({ country, canAct, onAction }: TabProps) {
   return (
     <div>
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <StatCard label="Stability" value={country.stability.toFixed(0)} sub={country.stability < 30 ? 'CRITICAL' : country.stability < 50 ? 'Unstable' : 'Stable'} />
-        <StatCard label="Approval" value={`${country.approval.toFixed(0)}%`} sub="Population support" />
-        <StatCard label="Tech Level" value={country.techLevel.toFixed(1)} sub="Research progress" />
+        <StatCard label={t.dom_stat_stability} value={country.stability.toFixed(0)} sub={country.stability < 30 ? t.dom_stat_stability_critical : country.stability < 50 ? t.dom_stat_stability_unstable : t.dom_stat_stability_stable} />
+        <StatCard label={t.dom_stat_approval} value={`${country.approval.toFixed(0)}%`} sub={t.dom_stat_approval_sub} />
+        <StatCard label={t.dom_stat_tech_level} value={country.techLevel.toFixed(1)} sub={t.dom_stat_tech_level_sub} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Indicators</h4>
-          <Bar label="Stability" value={country.stability} max={100} color="bg-accent-green" />
-          <Bar label="Approval" value={country.approval} max={100} color="bg-accent-blue" />
-          <Bar label="Revolution Risk" value={revRisk} max={100} color="bg-severity-high" />
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.dom_indicators}</h4>
+          <Bar label={t.dom_bar_stability} value={country.stability} max={100} color="bg-accent-green" />
+          <Bar label={t.dom_bar_approval} value={country.approval} max={100} color="bg-accent-blue" />
+          <Bar label={t.dom_bar_revolution} value={revRisk} max={100} color="bg-severity-high" />
         </div>
         <div>
-          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Policies</h4>
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.dom_policies}</h4>
           <ActionBtn
-            label="Social Spending"
+            label={t.dom_social}
             cost="$5B"
-            effect="Approval +2.5, Stability +1.5"
+            effect={t.dom_social_eff}
             disabled={!canAct || country.economy.budget < 5}
             onClick={() => act({ type: 'allocate_budget', category: 'social', amount: 5 })}
           />
           <ActionBtn
-            label="Research Program"
+            label={t.dom_research_prog}
             cost="$10B"
-            effect="Tech +0.3, ???"
+            effect={t.dom_research_prog_eff}
             disabled={!canAct || country.economy.budget < 10}
             onClick={() => act({ type: 'research_tech', category: 'economy' })}
           />
           <ActionBtn
-            label="Emergency Spending"
+            label={t.dom_emergency}
             cost="$15B"
-            effect="Approval +7.5, Stability +4.5"
+            effect={t.dom_emergency_eff}
             disabled={!canAct || country.economy.budget < 15}
             onClick={() => act({ type: 'allocate_budget', category: 'social', amount: 15 })}
           />

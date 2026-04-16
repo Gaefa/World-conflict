@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocaleStore } from '@/stores/localeStore';
+import type { Translations } from '@/lib/i18n/types';
 
 interface Relation {
   id: string;
@@ -17,22 +19,26 @@ interface RelationsPanelProps {
   currentTick: number;
 }
 
-const TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  alliance: { label: 'Alliance', color: 'text-accent-blue', bgColor: 'bg-accent-blue/10 border-accent-blue/30' },
-  war: { label: 'War', color: 'text-severity-high', bgColor: 'bg-severity-high/10 border-severity-high/30' },
-  trade_agreement: { label: 'Trade', color: 'text-accent-green', bgColor: 'bg-accent-green/10 border-accent-green/30' },
-  sanction: { label: 'Sanction', color: 'text-amber-400', bgColor: 'bg-amber-500/10 border-amber-500/30' },
-  non_aggression: { label: 'NAP', color: 'text-accent-blue', bgColor: 'bg-accent-blue/10 border-accent-blue/30' },
-  ceasefire: { label: 'Ceasefire', color: 'text-text-secondary', bgColor: 'bg-bg-card border-border-default' },
-  naval_blockade: { label: 'Blockade', color: 'text-severity-high', bgColor: 'bg-severity-high/10 border-severity-high/30' },
-  smuggle_route: { label: 'Smuggle', color: 'text-purple-400', bgColor: 'bg-purple-500/10 border-purple-500/30' },
-};
+function getTypeConfig(t: Translations): Record<string, { label: string; color: string; bgColor: string }> {
+  return {
+    alliance: { label: t.rel_alliance, color: 'text-accent-blue', bgColor: 'bg-accent-blue/10 border-accent-blue/30' },
+    war: { label: t.rel_war, color: 'text-severity-high', bgColor: 'bg-severity-high/10 border-severity-high/30' },
+    trade_agreement: { label: t.rel_trade, color: 'text-accent-green', bgColor: 'bg-accent-green/10 border-accent-green/30' },
+    sanction: { label: t.rel_sanction, color: 'text-amber-400', bgColor: 'bg-amber-500/10 border-amber-500/30' },
+    non_aggression: { label: t.rel_nap, color: 'text-accent-blue', bgColor: 'bg-accent-blue/10 border-accent-blue/30' },
+    ceasefire: { label: t.rel_ceasefire, color: 'text-text-secondary', bgColor: 'bg-bg-card border-border-default' },
+    naval_blockade: { label: t.rel_blockade, color: 'text-severity-high', bgColor: 'bg-severity-high/10 border-severity-high/30' },
+    smuggle_route: { label: t.rel_smuggle, color: 'text-purple-400', bgColor: 'bg-purple-500/10 border-purple-500/30' },
+  };
+}
 
 const FILTERS = ['all', 'war', 'alliance', 'trade_agreement', 'sanction'] as const;
 
 export function RelationsPanel({ relations, playerCountryCode, currentTick }: RelationsPanelProps) {
   const [filter, setFilter] = useState<string>('all');
   const [showMine, setShowMine] = useState(true);
+  const { t } = useLocaleStore();
+  const typeConfig = getTypeConfig(t);
 
   const activeRelations = relations.filter(r => r.status === 'active' || r.status === 'proposed');
 
@@ -62,9 +68,9 @@ export function RelationsPanel({ relations, playerCountryCode, currentTick }: Re
       {/* Summary badges */}
       {playerCountryCode && (
         <div className="flex gap-2 flex-wrap">
-          <Badge label="Wars" count={myWars} color={myWars > 0 ? 'text-severity-high' : 'text-text-muted'} />
-          <Badge label="Allies" count={myAllies} color={myAllies > 0 ? 'text-accent-blue' : 'text-text-muted'} />
-          <Badge label="Global Relations" count={activeRelations.length} color="text-text-secondary" />
+          <Badge label={t.rel_wars} count={myWars} color={myWars > 0 ? 'text-severity-high' : 'text-text-muted'} />
+          <Badge label={t.rel_allies} count={myAllies} color={myAllies > 0 ? 'text-accent-blue' : 'text-text-muted'} />
+          <Badge label={t.rel_global} count={activeRelations.length} color="text-text-secondary" />
         </div>
       )}
 
@@ -80,7 +86,7 @@ export function RelationsPanel({ relations, playerCountryCode, currentTick }: Re
                 : 'bg-bg-card border border-border-default text-text-muted hover:text-text-primary'
             }`}
           >
-            {f === 'all' ? 'All' : TYPE_CONFIG[f]?.label ?? f}
+            {f === 'all' ? t.rel_all : typeConfig[f]?.label ?? f}
             {f !== 'all' && counts[f] ? ` (${counts[f]})` : ''}
           </button>
         ))}
@@ -92,17 +98,17 @@ export function RelationsPanel({ relations, playerCountryCode, currentTick }: Re
           onClick={() => setShowMine(!showMine)}
           className="text-xs text-text-muted hover:text-text-primary"
         >
-          {showMine ? 'Show global relations' : 'Show my relations only'}
+          {showMine ? t.rel_show_global : t.rel_show_mine}
         </button>
       )}
 
       {/* Relations list */}
       <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
         {filtered.length === 0 ? (
-          <p className="text-text-muted text-xs text-center py-4">No relations found</p>
+          <p className="text-text-muted text-xs text-center py-4">{t.rel_no_relations}</p>
         ) : (
           filtered.map(r => {
-            const cfg = TYPE_CONFIG[r.type] || { label: r.type, color: 'text-text-primary', bgColor: 'bg-bg-card border-border-default' };
+            const cfg = typeConfig[r.type] || { label: r.type, color: 'text-text-primary', bgColor: 'bg-bg-card border-border-default' };
             const duration = currentTick - r.createdAtTick;
             const isProposed = r.status === 'proposed';
 
@@ -118,13 +124,13 @@ export function RelationsPanel({ relations, playerCountryCode, currentTick }: Re
                   {r.fromCountry}
                 </span>
                 <span className="text-text-muted text-xs">
-                  {r.type === 'war' || r.type === 'sanction' ? 'vs' : '<>'}
+                  {r.type === 'war' || r.type === 'sanction' ? t.rel_vs : '<>'}
                 </span>
                 <span className="text-text-primary font-mono text-xs">
                   {r.toCountry}
                 </span>
                 <span className="ml-auto text-text-muted text-[10px]">
-                  {isProposed ? 'PENDING' : `${duration}mo`}
+                  {isProposed ? t.rel_pending : `${duration}${t.rel_months_short}`}
                 </span>
               </div>
             );

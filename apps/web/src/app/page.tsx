@@ -9,6 +9,7 @@ import { BottomTabs } from '@/components/panels/BottomTabs';
 import { CreateSessionModal } from '@/components/ui/CreateSessionModal';
 import { ActionToast } from '@/components/ui/ActionToast';
 import { LocalePicker } from '@/components/ui/LocalePicker';
+import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
 import { VictoryOverlay } from '@/components/ui/VictoryOverlay';
 import { Leaderboard } from '@/components/panels/Leaderboard';
 import { useGameStore } from '@/stores/gameStore';
@@ -20,7 +21,7 @@ export default function Home() {
   const [clickedCountryName, setClickedCountryName] = useState<string>('');
   const [showVictory, setShowVictory] = useState(true);
 
-  const { t, isFirstLaunch } = useLocaleStore();
+  const { t, isFirstLaunch, showTutorial, markTutorialDone } = useLocaleStore();
 
   const {
     gameState,
@@ -157,6 +158,11 @@ export default function Home() {
       {/* Locale picker on first launch */}
       {isFirstLaunch && <LocalePicker />}
 
+      {/* Onboarding tutorial (shown after locale pick on first launch, or via help button) */}
+      {!isFirstLaunch && showTutorial && (
+        <OnboardingTutorial onClose={markTutorialDone} />
+      )}
+
       <Header
         activeSessions={sessionId ? 1 : 0}
         onlinePlayers={playerCount}
@@ -186,7 +192,7 @@ export default function Home() {
                   {connected ? t.connected : t.disconnected}
                 </span>
                 <span className="text-text-muted text-xs font-mono">
-                  {t.header_tension_stable.split('')[0]}: {tensionIndex.toFixed(0)}%
+                  {t.header_tension_short}: {tensionIndex.toFixed(0)}%
                 </span>
               </div>
             </div>

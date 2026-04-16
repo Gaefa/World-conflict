@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocaleStore } from '@/stores/localeStore';
 
 interface CountryStats {
   name: string;
@@ -20,6 +21,7 @@ interface CountryPanelProps {
 
 export function CountryPanel({ country }: CountryPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useLocaleStore();
 
   return (
     <aside
@@ -33,7 +35,7 @@ export function CountryPanel({ country }: CountryPanelProps) {
       >
         {!collapsed && (
           <h2 className="text-sm font-bold uppercase tracking-wider text-text-secondary flex-1 text-left">
-            {country ? country.name : 'Select Country'}
+            {country ? country.name : t.cp_select_country}
           </h2>
         )}
         <span className="text-text-muted text-xs">{collapsed ? '\u25C0' : '\u25B6'}</span>
@@ -43,7 +45,7 @@ export function CountryPanel({ country }: CountryPanelProps) {
         <div className="flex-1 overflow-y-auto p-3">
           {!country ? (
             <div className="text-text-muted text-sm text-center py-8">
-              Click a country on the globe.
+              {t.cp_click_hint}
             </div>
           ) : country.isNonPlayable ? (
             <div className="space-y-3">
@@ -53,14 +55,14 @@ export function CountryPanel({ country }: CountryPanelProps) {
               </div>
               <div className="bg-bg-card border border-border-default rounded p-3">
                 <p className="text-text-secondary text-sm">
-                  Non-playable territory. Can be targeted by diplomacy, military, or intelligence actions.
+                  {t.cp_nonplayable_desc}
                 </p>
               </div>
               <div className="space-y-1">
-                <ActionHint label="Declare War" desc="Conquer and annex" />
-                <ActionHint label="Impose Sanctions" desc="Reduce their economy" />
-                <ActionHint label="Spy" desc="Gather intelligence" />
-                <ActionHint label="Trade Agreement" desc="Boost your GDP" />
+                <ActionHint label={t.cp_action_declare_war} desc={t.cp_action_declare_war_desc} />
+                <ActionHint label={t.cp_action_sanctions} desc={t.cp_action_sanctions_desc} />
+                <ActionHint label={t.cp_action_spy} desc={t.cp_action_spy_desc} />
+                <ActionHint label={t.cp_action_trade} desc={t.cp_action_trade_desc} />
               </div>
             </div>
           ) : (
@@ -71,7 +73,7 @@ export function CountryPanel({ country }: CountryPanelProps) {
 
               {/* Power Index — prominently displayed */}
               <div className="bg-bg-card border border-border-default rounded p-3 text-center">
-                <p className="text-text-muted text-xs uppercase mb-1">Index of Power</p>
+                <p className="text-text-muted text-xs uppercase mb-1">{t.cp_index_of_power}</p>
                 <p className={`text-3xl font-bold font-mono ${
                   country.powerIndex > 70 ? 'text-accent-red' : country.powerIndex > 40 ? 'text-amber-400' : 'text-text-primary'
                 }`}>
@@ -82,7 +84,7 @@ export function CountryPanel({ country }: CountryPanelProps) {
               {/* Stats grid */}
               <div className="space-y-2">
                 <StatBar
-                  label="GDP"
+                  label={t.cp_gdp}
                   value={country.gdp / 1e12}
                   max={25}
                   color="bg-accent-green"
@@ -90,22 +92,23 @@ export function CountryPanel({ country }: CountryPanelProps) {
                   icon="$"
                 />
                 <StatBar
-                  label="Military"
+                  label={t.cp_military}
                   value={country.militaryPower}
                   max={100}
                   color="bg-accent-red"
                   icon="!"
                 />
                 <StatBar
-                  label="Stability"
+                  label={t.cp_stability}
                   value={country.stability}
                   max={100}
                   color={country.stability < 30 ? 'bg-severity-high' : country.stability < 60 ? 'bg-amber-500' : 'bg-accent-blue'}
                   icon="~"
                   warn={country.stability < 30}
+                  warnLabel={t.cp_stability_critical}
                 />
                 <StatBar
-                  label="Tech Level"
+                  label={t.cp_tech_level}
                   value={country.techLevel}
                   max={10}
                   color="bg-purple-500"
@@ -115,8 +118,8 @@ export function CountryPanel({ country }: CountryPanelProps) {
 
               <div className="border-t border-border-default pt-3 mt-3">
                 <div className="grid grid-cols-2 gap-2">
-                  <MiniStat label="Population" value={country.population > 0 ? `${(country.population / 1e6).toFixed(0)}M` : '---'} />
-                  <MiniStat label="GDP Growth" value={`${((country.gdp / 1e12 / 25) * 2).toFixed(1)}%`} />
+                  <MiniStat label={t.cp_population} value={country.population > 0 ? `${(country.population / 1e6).toFixed(0)}M` : '---'} />
+                  <MiniStat label={t.cp_gdp_growth} value={`${((country.gdp / 1e12 / 25) * 2).toFixed(1)}%`} />
                 </div>
               </div>
             </div>
@@ -135,6 +138,7 @@ function StatBar({
   suffix = '',
   icon,
   warn = false,
+  warnLabel,
 }: {
   label: string;
   value: number;
@@ -143,6 +147,7 @@ function StatBar({
   suffix?: string;
   icon?: string;
   warn?: boolean;
+  warnLabel?: string;
 }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
@@ -151,7 +156,7 @@ function StatBar({
         <span className={`text-text-secondary flex items-center gap-1 ${warn ? 'text-severity-high animate-pulse' : ''}`}>
           {icon && <span className="text-text-muted">{icon}</span>}
           {label}
-          {warn && <span className="text-severity-high text-[10px]"> CRITICAL</span>}
+          {warn && <span className="text-severity-high text-[10px]"> {warnLabel ?? 'CRITICAL'}</span>}
         </span>
         <span className="text-text-primary font-mono">
           {value.toFixed(1)}{suffix}

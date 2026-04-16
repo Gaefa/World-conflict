@@ -1,3 +1,3 @@
-export type { Locale, Translations } from './types';
-export { en } from './en';
-export { ru } from './ru';
+export type { Locale, Translations, TechTranslation, TechTranslations } from './types';
+export { en, enTech } from './en';
+export { ru, ruTech } from './ru';

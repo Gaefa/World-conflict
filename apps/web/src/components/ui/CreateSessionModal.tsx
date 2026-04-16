@@ -170,7 +170,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
                   <div>
                     <div className="text-text-primary text-sm font-medium">{c.name}</div>
                     <div className="text-text-muted text-xs">
-                      {t.panel_gdp}: ${(c.startingState.economy.gdp / 1000).toFixed(1)}T
+                      {t.cp_gdp}: ${(c.startingState.economy.gdp / 1000).toFixed(1)}T
                     </div>
                   </div>
                 </button>
