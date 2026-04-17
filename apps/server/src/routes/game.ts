@@ -3,13 +3,19 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { gameSessions, players, countryStates, gameEvents } from '../db/schema.js';
 import { SEED_COUNTRIES } from '../db/seed-countries.js';
-import { GameLoop, InMemoryGameStateStore } from '../game/loop.js';
+import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter } from '../game/loop.js';
+import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import type { GameState, GameSettings, CountryState } from '@conflict-game/shared-types';
 import { PROCESSING_CHAINS } from '@conflict-game/game-logic';
 
 // Shared game loop instance (single-process, Phase 1 architecture)
 const store = new InMemoryGameStateStore();
-const gameLoop = new GameLoop(store);
+const wsAdapter: GameLoopAdapter = {
+  sendToPlayer,
+  broadcast: (sessionId, message) => broadcastToSession(sessionId, message),
+  getPlayerConnections,
+};
+const gameLoop = new GameLoop(store, wsAdapter);
 
 export { gameLoop, store };
 

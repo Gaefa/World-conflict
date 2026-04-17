@@ -1,15 +1,23 @@
-import type { GameState, GameStateDelta, CountryState, GameEvent } from '@conflict-game/shared-types';
+import type { GameState, GameStateDelta, CountryState, GameEvent, ServerMessage } from '@conflict-game/shared-types';
 import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick, computeAIActions, checkVictoryConditions } from '@conflict-game/game-logic';
 import type { VictoryResult } from '@conflict-game/game-logic';
 import type { AIState } from '@conflict-game/game-logic';
-import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { drainActions } from './action-queue.js';
 import { processAction } from './action-processor.js';
 
 export interface GameStateStore {
   getState(sessionId: string): GameState | null;
   setState(sessionId: string, state: GameState): void;
-  broadcastDelta(sessionId: string, delta: GameStateDelta): void;
+}
+
+/**
+ * Transport-agnostic interface the game loop uses to reach players.
+ * Server passes a WebSocket-backed implementation; single-player passes an in-process one.
+ */
+export interface GameLoopAdapter {
+  sendToPlayer(playerId: string, message: ServerMessage): void;
+  broadcast(sessionId: string, message: ServerMessage): void;
+  getPlayerConnections(sessionId: string): { playerId: string; countryCode: string | null }[];
 }
 
 export class InMemoryGameStateStore implements GameStateStore {
@@ -21,13 +29,6 @@ export class InMemoryGameStateStore implements GameStateStore {
 
   setState(sessionId: string, state: GameState): void {
     this.states.set(sessionId, state);
-  }
-
-  broadcastDelta(sessionId: string, delta: GameStateDelta): void {
-    broadcastToSession(sessionId, {
-      type: 'state_delta',
-      payload: delta,
-    });
   }
 
   removeState(sessionId: string): void {
@@ -42,11 +43,13 @@ export class InMemoryGameStateStore implements GameStateStore {
 export class GameLoop {
   private intervals = new Map<string, ReturnType<typeof setInterval>>();
   private store: GameStateStore;
+  private adapter: GameLoopAdapter;
   private tickIntervalMs: number;
   private aiStatesRef: Map<string, Map<string, AIState>> | null = null;
 
-  constructor(store: GameStateStore, tickIntervalMs: number = 10_000) {
+  constructor(store: GameStateStore, adapter: GameLoopAdapter, tickIntervalMs: number = 10_000) {
     this.store = store;
+    this.adapter = adapter;
     this.tickIntervalMs = tickIntervalMs;
   }
 
@@ -124,7 +127,7 @@ export class GameLoop {
     for (const queued of pendingActions) {
       const result = processAction(state, queued.countryCode, queued.action);
       // Send result back to the player who submitted the action
-      sendToPlayer(queued.playerId, {
+      this.adapter.sendToPlayer(queued.playerId, {
         type: 'action_result',
         payload: result,
       });
@@ -307,7 +310,7 @@ export class GameLoop {
     }
 
     // Per-player fog: each player sees fogged data for other countries
-    const playerConns = getPlayerConnections(sessionId);
+    const playerConns = this.adapter.getPlayerConnections(sessionId);
     for (const { playerId, countryCode } of playerConns) {
       const playerIntel = countryCode ? state.countries[countryCode]?.intel : undefined;
       const foggedDeltas: Record<string, Partial<CountryState>> = {};
@@ -348,7 +351,7 @@ export class GameLoop {
         resourceMarket: state.resourceMarket,
       };
 
-      sendToPlayer(playerId, { type: 'state_delta', payload: playerDelta });
+      this.adapter.sendToPlayer(playerId, { type: 'state_delta', payload: playerDelta });
     }
   }
 }

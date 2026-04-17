@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { SEED_COUNTRIES } from '../db/seed-countries.js';
-import { GameLoop, InMemoryGameStateStore } from '../game/loop.js';
+import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter } from '../game/loop.js';
+import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { defaultTechBonuses } from '@conflict-game/shared-types';
@@ -30,7 +31,15 @@ function defaultTech(techLevel: number): TechnologyState {
 import { setStateResolver, setGameLoopRef } from '../ws/handler.js';
 
 const store = new InMemoryGameStateStore();
-const gameLoop = new GameLoop(store);
+
+/** WebSocket-backed adapter — injected into the game loop. */
+const wsAdapter: GameLoopAdapter = {
+  sendToPlayer,
+  broadcast: (sessionId, message) => broadcastToSession(sessionId, message),
+  getPlayerConnections,
+};
+
+const gameLoop = new GameLoop(store, wsAdapter);
 
 // AI state per session: sessionId → countryCode → AIState
 const aiStates = new Map<string, Map<string, AIState>>();
