@@ -181,10 +181,7 @@ export function processResourceTick(state: GameState): ResourceTickResult {
 
   // ── Step 3: Consumption ──
   for (const [code, country] of Object.entries(state.countries)) {
-    const popFactor = (country.resources as any).population
-      ? 1 // fallback
-      : 1; // we use country data from SEED_COUNTRIES but population isn't on CountryState
-    // Approximate: use GDP as proxy for development level
+    // Approximate: use GDP as proxy for development level (population isn't on CountryState)
     const gdpFactor = country.economy.gdp / 2000; // normalize to ~1 for $2T economy
     const techFactor = country.techLevel / 5; // tech=5 → 1.0, tech=10 → 2.0
 

@@ -26,12 +26,6 @@ interface Connection {
 
 const connections = new Map<string, Connection>();
 
-/** Register a player's country code (called after country selection / game start) */
-export function setPlayerCountry(playerId: string, countryCode: string): void {
-  const conn = connections.get(playerId);
-  if (conn) conn.countryCode = countryCode;
-}
-
 export function wsHandler(socket: WebSocket, request: FastifyRequest) {
   let playerId: string | null = null;
   let sessionId: string | null = null;
@@ -175,14 +169,6 @@ export function broadcastToSession(sessionId: string, message: ServerMessage, ex
 export function sendToPlayer(playerId: string, message: ServerMessage): void {
   const conn = connections.get(playerId);
   if (conn) send(conn.socket, message);
-}
-
-export function getConnectionCount(sessionId: string): number {
-  let count = 0;
-  for (const conn of connections.values()) {
-    if (conn.sessionId === sessionId) count++;
-  }
-  return count;
 }
 
 /** Get all player connections for a session (for per-player fog broadcasts) */

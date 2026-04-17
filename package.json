@@ -13,7 +13,10 @@
     "dev:server": "turbo dev --filter=@conflict-game/server",
     "dev:web": "turbo dev --filter=@conflict-game/web",
     "db:push": "npm run db:push --workspace=apps/server",
-    "db:seed": "npm run db:seed --workspace=apps/server"
+    "db:seed": "npm run db:seed --workspace=apps/server",
+    "check:bundle-size": "node scripts/check-bundle-size.mjs",
+    "check:circular": "npx madge --circular --extensions ts,tsx apps/server/src apps/web/src packages",
+    "check:unused": "npx ts-prune -p apps/server/tsconfig.json"
   },
   "devDependencies": {
     "turbo": "^2.4.0",

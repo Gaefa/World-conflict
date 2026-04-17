@@ -58,6 +58,13 @@ jobs:
           echo "Static export size: $(du -sh apps/web/out)"
         shell: bash
 
+      - name: Bundle size gate
+        # Fails the build if web or server bundles exceed thresholds.
+        # Catches accidental dep bloat before it ships in the installer.
+        if: matrix.platform == 'mac'  # single OS run is enough — bundles are identical
+        run: node scripts/check-bundle-size.mjs
+        shell: bash
+
       - name: Build Electron (${{ matrix.platform }})
         run: npx electron-builder --${{ matrix.platform }} --publish never
         working-directory: apps/desktop
