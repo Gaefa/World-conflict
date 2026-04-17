@@ -7,3 +7,4 @@ export * from './actions.js';
 export * from './intelligence.js';
 export * from './technology.js';
 export type * from './ws-messages.js';
+export { SEED_COUNTRIES } from './seed-countries.js';

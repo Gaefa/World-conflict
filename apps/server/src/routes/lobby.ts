@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { eq, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { gameSessions, players } from '../db/schema.js';
-import { SEED_COUNTRIES } from '../db/seed-countries.js';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { GameSettings } from '@conflict-game/shared-types';
 
 const DEFAULT_SETTINGS: GameSettings = {

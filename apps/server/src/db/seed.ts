@@ -1,5 +1,5 @@
 import { db, schema } from './index.js';
-import { SEED_COUNTRIES } from './seed-countries.js';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 
 async function seed() {
   console.log('🌱 Seeding database...');

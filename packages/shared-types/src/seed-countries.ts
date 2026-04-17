@@ -1,4 +1,4 @@
-import type { CountryData } from '@conflict-game/shared-types';
+import type { CountryData } from './country.js';
 import countriesData from './countries.json';
 
 // Country seed data lives in countries.json (edit-friendly for non-coders).

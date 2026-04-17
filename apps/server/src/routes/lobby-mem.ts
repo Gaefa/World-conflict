@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { SEED_COUNTRIES } from '../db/seed-countries.js';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { GameSettings } from '@conflict-game/shared-types';
 
 // In-memory storage (no DB required)
