@@ -16,6 +16,7 @@
   "dependencies": {
     "@conflict-game/shared-types": "*",
     "@conflict-game/game-logic": "*",
+    "@conflict-game/game-engine": "*",
     "@conflict-game/utils": "*",
     "fastify": "^5.2.0",
     "@fastify/cors": "^10.0.0",

@@ -1,8 +1,7 @@
 import type { FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import type { ClientMessage, ServerMessage, GameState } from '@conflict-game/shared-types';
-import { enqueueAction } from '../game/action-queue.js';
-import type { GameLoop } from '../game/loop.js';
+import { enqueueAction, type GameLoop } from '@conflict-game/game-engine';
 
 /** Resolver to look up game loop — set by game-mem.ts on startup */
 let gameLoopRef: GameLoop | null = null;
