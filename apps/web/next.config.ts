@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
   // Trailing slash makes file:// routing work for nested paths since there
   // is no server to rewrite `/foo` -> `/foo/index.html`.
   trailingSlash: true,
+  // Workspace packages ship raw TypeScript and use NodeNext `.js` import
+  // specifiers that resolve to `.ts` source. Turbopack needs them listed
+  // here to run them through the TS loader and remap extensions.
+  transpilePackages: [
+    '@conflict-game/shared-types',
+    '@conflict-game/game-logic',
+    '@conflict-game/game-engine',
+    '@conflict-game/utils',
+  ],
 };
 
 export default nextConfig;

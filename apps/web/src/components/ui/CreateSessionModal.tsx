@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useLocaleStore } from '@/stores/localeStore';
 import { useCountries } from '@/hooks/useCountries';
+import { InMemoryTransport, WebSocketTransport } from '@/lib/transport';
 
 interface CreateSessionModalProps {
   onClose: () => void;
+  mode?: 'singleplayer' | 'multiplayer';
 }
 
-export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
+export function CreateSessionModal({ onClose, mode = 'multiplayer' }: CreateSessionModalProps) {
   const [step, setStep] = useState<'create' | 'country' | 'ready'>('create');
   const [sessionName, setSessionName] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -19,7 +21,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
   const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
 
   const { t } = useLocaleStore();
-  const { createSession, selectCountry, startGame, selectedCountryCode } = useGameStore();
+  const { createSession, selectCountry, startGame, selectedCountryCode, setTransport } = useGameStore();
   const { data: countries } = useCountries();
 
   const handleCreate = async () => {
@@ -30,6 +32,9 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
     setLoading(true);
     setError('');
     try {
+      // Fresh transport each time — ensures the previous session is cleaned up
+      // and switches modes cleanly if the user reopens with a different choice.
+      setTransport(mode === 'singleplayer' ? new InMemoryTransport() : new WebSocketTransport());
       await createSession(sessionName.trim(), playerName.trim(), { allowAI: aiEnabled, aiDifficulty });
       setStep('country');
     } catch (e: unknown) {
@@ -81,7 +86,7 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
       <div className="bg-bg-secondary border border-border-default rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col animate-fade-in">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-bold uppercase tracking-wider">
-            {step === 'create' && t.session_new}
+            {step === 'create' && `${t.session_new} — ${mode === 'singleplayer' ? t.mode_singleplayer : t.mode_multiplayer}`}
             {step === 'country' && t.session_select_country}
             {step === 'ready' && t.session_ready}
           </h2>

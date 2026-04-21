@@ -17,7 +17,7 @@ import { useLocaleStore } from '@/stores/localeStore';
 import { useCountries } from '@/hooks/useCountries';
 
 export default function Home() {
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalMode, setModalMode] = useState<null | 'singleplayer' | 'multiplayer'>(null);
   const [clickedCountryName, setClickedCountryName] = useState<string>('');
   const [showVictory, setShowVictory] = useState(true);
 
@@ -199,12 +199,18 @@ export default function Home() {
           )}
 
           {!sessionId && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex gap-3">
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => setModalMode('singleplayer')}
+                className="pointer-events-auto bg-accent-green hover:bg-green-600 text-white px-6 py-3 rounded font-bold uppercase tracking-wider transition-colors shadow-lg shadow-green-900/30 cursor-pointer"
+              >
+                {t.mode_singleplayer}
+              </button>
+              <button
+                onClick={() => setModalMode('multiplayer')}
                 className="pointer-events-auto bg-accent-red hover:bg-red-600 text-white px-6 py-3 rounded font-bold uppercase tracking-wider transition-colors shadow-lg shadow-red-900/30 cursor-pointer"
               >
-                {t.create_game}
+                {t.mode_multiplayer}
               </button>
             </div>
           )}
@@ -241,8 +247,8 @@ export default function Home() {
 
       <ActionToast />
 
-      {showCreateModal && (
-        <CreateSessionModal onClose={() => setShowCreateModal(false)} />
+      {modalMode && (
+        <CreateSessionModal mode={modalMode} onClose={() => setModalMode(null)} />
       )}
 
       {/* Victory overlay */}

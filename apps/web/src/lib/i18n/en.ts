@@ -16,6 +16,8 @@ export const en: Translations = {
   header_help: '?',
 
   // Session
+  mode_singleplayer: 'Singleplayer',
+  mode_multiplayer: 'Multiplayer',
   session_create: 'Create Session',
   session_new: 'New Session',
   session_name: 'Session Name',

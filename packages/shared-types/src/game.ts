@@ -1,7 +1,7 @@
-import type { CountryState, ResourceType, ProcessingChain } from './country.js';
-import type { Army } from './military.js';
-import type { DiplomaticRelation } from './diplomacy.js';
-import type { GameEvent } from './events.js';
+import type { CountryState, ResourceType, ProcessingChain } from './country';
+import type { Army } from './military';
+import type { DiplomaticRelation } from './diplomacy';
+import type { GameEvent } from './events';
 
 export type GameSessionStatus = 'lobby' | 'starting' | 'active' | 'paused' | 'finished';
 

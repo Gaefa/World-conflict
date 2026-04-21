@@ -2,8 +2,8 @@ import type { GameState, GameStateDelta, CountryState, GameEvent, ServerMessage 
 import { processEconomyTick, processStabilityTick, calculateIndexOfPower, processResourceTick, processIntelTick, applyFog, processTechTick, computeAIActions, checkVictoryConditions } from '@conflict-game/game-logic';
 import type { VictoryResult } from '@conflict-game/game-logic';
 import type { AIState } from '@conflict-game/game-logic';
-import { drainActions } from './action-queue.js';
-import { processAction } from './action-processor.js';
+import { drainActions } from './action-queue';
+import { processAction } from './action-processor';
 
 export interface GameStateStore {
   getState(sessionId: string): GameState | null;

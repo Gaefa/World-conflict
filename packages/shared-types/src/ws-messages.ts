@@ -1,6 +1,6 @@
-import type { PlayerAction, ActionResult } from './actions.js';
-import type { GameState, GameStateDelta, Player } from './game.js';
-import type { GameEvent } from './events.js';
+import type { PlayerAction, ActionResult } from './actions';
+import type { GameState, GameStateDelta, Player } from './game';
+import type { GameEvent } from './events';
 
 /** Messages from client to server */
 export type ClientMessage =

@@ -16,6 +16,8 @@ export const ru: Translations = {
   header_help: '?',
 
   // Session
+  mode_singleplayer: 'Одиночная',
+  mode_multiplayer: 'Мультиплеер',
   session_create: 'Создать сессию',
   session_new: 'Новая сессия',
   session_name: 'Название сессии',

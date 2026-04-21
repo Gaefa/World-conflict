@@ -1,4 +1,4 @@
-import type { ResourceType } from './country.js';
+import type { ResourceType } from './country';
 
 export type DiplomacyType =
   | 'alliance'

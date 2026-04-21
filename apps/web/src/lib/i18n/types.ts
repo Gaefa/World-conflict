@@ -17,6 +17,8 @@ export interface Translations {
   header_help: string;
 
   // ── Session / Create modal ──
+  mode_singleplayer: string;
+  mode_multiplayer: string;
   session_create: string;
   session_new: string;
   session_name: string;

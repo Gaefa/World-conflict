@@ -1,3 +1,3 @@
-export * from './geo.js';
-export * from './format.js';
-export * from './constants.js';
+export * from './geo';
+export * from './format';
+export * from './constants';

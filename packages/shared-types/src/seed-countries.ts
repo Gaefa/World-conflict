@@ -1,4 +1,4 @@
-import type { CountryData } from './country.js';
+import type { CountryData } from './country';
 import countriesData from './countries.json';
 
 // Country seed data lives in countries.json (edit-friendly for non-coders).

@@ -1,5 +1,5 @@
-import type { ResourceType } from './country.js';
-import type { SpyOpType, RevealedCategories } from './intelligence.js';
+import type { ResourceType } from './country';
+import type { SpyOpType, RevealedCategories } from './intelligence';
 
 /** All possible player actions sent to the server */
 export type PlayerAction =

@@ -1,1 +1,1 @@
-export * from './tech-tick.js';
+export * from './tech-tick';
