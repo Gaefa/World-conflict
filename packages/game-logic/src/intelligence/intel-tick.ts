@@ -11,6 +11,7 @@ import {
   SPY_OP_CONFIG,
   INTEL_THRESHOLDS,
 } from '@conflict-game/shared-types';
+import type { RNG } from '../rng';
 
 // ── Intelligence Tick ──
 // Runs once per game tick. Processes spy ops, counterintel, disinfo, SIGINT.
@@ -19,7 +20,7 @@ export interface IntelTickResult {
   events: GameEvent[];
 }
 
-export function processIntelTick(state: GameState): IntelTickResult {
+export function processIntelTick(state: GameState, rng: RNG): IntelTickResult {
   const events: GameEvent[] = [];
   const tick = state.session.currentTick;
 
@@ -44,7 +45,7 @@ export function processIntelTick(state: GameState): IntelTickResult {
       const targetCI = target.intel?.counterIntel ?? 20;
       const detectionChance = op.detectionRisk * (1 + targetCI / 100);
 
-      if (Math.random() < detectionChance) {
+      if (rng() < detectionChance) {
         // Caught!
         completedOps.push(op.id);
         country.diplomaticInfluence = Math.max(0, country.diplomaticInfluence - 5);
@@ -128,6 +129,7 @@ export function applyFog(
   realCountry: CountryState,
   observerIntel: IntelligenceState | undefined,
   observerCode: string,
+  rng: RNG,
 ): CountryState {
   // You always see yourself clearly
   if (realCountry.code === observerCode) return realCountry;
@@ -148,20 +150,20 @@ export function applyFog(
   // Apply fog to economy
   if (!revealed.economy) {
     const econDisinfo = getDisinfoMultiplier(disinfo, 'economy');
-    fogged.economy.gdp = fogValue(fogged.economy.gdp, noise, econDisinfo);
-    fogged.economy.budget = fogValue(fogged.economy.budget, noise, econDisinfo);
-    fogged.economy.tradeBalance = fogValue(fogged.economy.tradeBalance, noise, econDisinfo);
-    fogged.economy.gdpGrowth = fogValue(fogged.economy.gdpGrowth, noise * 2, econDisinfo); // growth is harder to estimate
+    fogged.economy.gdp = fogValue(fogged.economy.gdp, noise, econDisinfo, rng);
+    fogged.economy.budget = fogValue(fogged.economy.budget, noise, econDisinfo, rng);
+    fogged.economy.tradeBalance = fogValue(fogged.economy.tradeBalance, noise, econDisinfo, rng);
+    fogged.economy.gdpGrowth = fogValue(fogged.economy.gdpGrowth, noise * 2, econDisinfo, rng); // growth is harder to estimate
   }
 
   // Apply fog to military
   if (!revealed.military) {
     const milDisinfo = getDisinfoMultiplier(disinfo, 'military');
-    fogged.military.army = Math.round(fogValue(fogged.military.army, noise, milDisinfo));
-    fogged.military.navy = Math.round(fogValue(fogged.military.navy, noise, milDisinfo));
-    fogged.military.airForce = Math.round(fogValue(fogged.military.airForce, noise, milDisinfo));
-    fogged.military.nuclearWeapons = Math.round(fogValue(fogged.military.nuclearWeapons, noise * 0.5, milDisinfo)); // nukes are more known
-    fogged.military.defenseBudget = fogValue(fogged.military.defenseBudget, noise, milDisinfo);
+    fogged.military.army = Math.round(fogValue(fogged.military.army, noise, milDisinfo, rng));
+    fogged.military.navy = Math.round(fogValue(fogged.military.navy, noise, milDisinfo, rng));
+    fogged.military.airForce = Math.round(fogValue(fogged.military.airForce, noise, milDisinfo, rng));
+    fogged.military.nuclearWeapons = Math.round(fogValue(fogged.military.nuclearWeapons, noise * 0.5, milDisinfo, rng)); // nukes are more known
+    fogged.military.defenseBudget = fogValue(fogged.military.defenseBudget, noise, milDisinfo, rng);
   }
 
   // Apply fog to resources (hide production details)
@@ -172,12 +174,12 @@ export function applyFog(
   // Apply fog to stability
   if (!revealed.stability) {
     const stabDisinfo = getDisinfoMultiplier(disinfo, 'stability');
-    fogged.stability = Math.round(fogValue(fogged.stability, noise, stabDisinfo));
-    fogged.approval = Math.round(fogValue(fogged.approval, noise, stabDisinfo));
+    fogged.stability = Math.round(fogValue(fogged.stability, noise, stabDisinfo, rng));
+    fogged.approval = Math.round(fogValue(fogged.approval, noise, stabDisinfo, rng));
   }
 
   // Recalculate power index from fogged data
-  fogged.indexOfPower = fogValue(fogged.indexOfPower, noise, 1);
+  fogged.indexOfPower = fogValue(fogged.indexOfPower, noise, 1, rng);
 
   // Always hide intel state from other players
   fogged.intel = undefined;
@@ -187,10 +189,10 @@ export function applyFog(
 
 // ── Helpers ──
 
-function fogValue(real: number, noise: number, disinfoMultiplier: number): number {
+function fogValue(real: number, noise: number, disinfoMultiplier: number, rng: RNG): number {
   // Apply disinfo first (target's manipulation), then noise (observer's uncertainty)
   const manipulated = real * disinfoMultiplier;
-  const error = manipulated * noise * (Math.random() * 2 - 1); // ±noise%
+  const error = manipulated * noise * (rng() * 2 - 1); // ±noise%
   return manipulated + error;
 }
 

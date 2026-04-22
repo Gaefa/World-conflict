@@ -1,18 +1,19 @@
 import type { Army, CountryState } from '@conflict-game/shared-types';
+import type { RNG } from '../rng';
 
 /** Calculate battle outcome between two armies */
-export function resolveBattle(attacker: Army, defender: Army): BattleResult {
+export function resolveBattle(attacker: Army, defender: Army, rng: RNG): BattleResult {
   const attackPower = calculateCombatPower(attacker) * 1.0; // no attack bonus
   const defensePower = calculateCombatPower(defender) * 1.2; // 20% defense bonus
 
   const totalPower = attackPower + defensePower;
   const attackerWinChance = attackPower / totalPower;
 
-  const roll = Math.random();
+  const roll = rng();
   const attackerWins = roll < attackerWinChance;
 
   // Calculate losses
-  const lossFactor = 0.1 + Math.random() * 0.2; // 10-30% losses
+  const lossFactor = 0.1 + rng() * 0.2; // 10-30% losses
   const winnerLossFactor = lossFactor * 0.5;
   const loserLossFactor = lossFactor * 1.5;
 

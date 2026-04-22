@@ -4,6 +4,7 @@ import type {
   GameState,
   CountryState,
 } from '@conflict-game/shared-types';
+import type { RNG } from '@conflict-game/game-logic';
 import { addEvent, clamp, fail, makeDipRelation } from './_helpers';
 
 // ── Resource system actions (v0.2) ──
@@ -62,6 +63,7 @@ export function processSmuggle(
 export function processResourceTheft(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'resource_theft' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -81,7 +83,7 @@ export function processResourceTheft(
   from.economy.budget -= cfg.cost;
 
   // Detection check
-  const detected = Math.random() < cfg.risk;
+  const detected = rng() < cfg.risk;
 
   if (detected) {
     from.diplomaticInfluence = clamp(from.diplomaticInfluence - 15, 0, 100);

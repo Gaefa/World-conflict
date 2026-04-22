@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter } from '@conflict-game/game-engine';
+import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState } from '@conflict-game/game-engine';
+import type { AIState } from '@conflict-game/game-engine';
 import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES, defaultTechBonuses } from '@conflict-game/shared-types';
-import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses, createAIState } from '@conflict-game/game-logic';
-import type { AIState } from '@conflict-game/game-logic';
+import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses } from '@conflict-game/game-logic';
 
 /** Default intelligence state for a new country */
 function defaultIntel(): IntelligenceState {

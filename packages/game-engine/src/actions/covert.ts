@@ -5,11 +5,13 @@ import type {
   GameState,
   CountryState,
 } from '@conflict-game/shared-types';
+import type { RNG } from '@conflict-game/game-logic';
 import { addEvent, clamp, fail, makeDipRelation } from './_helpers';
 
 export function processProxyWar(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'proxy_war' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -30,7 +32,7 @@ export function processProxyWar(
   target.economy.gdp -= target.economy.gdp * (effectiveness * 0.005);
 
   // Chance of exposure
-  const exposed = Math.random() < 0.3;
+  const exposed = rng() < 0.3;
   if (exposed) {
     from.diplomaticInfluence = clamp(from.diplomaticInfluence - 10, 0, 100);
     addEvent(state, 'political_scandal',
@@ -63,6 +65,7 @@ export function processProxyWar(
 export function processInciteRebellion(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'incite_rebellion' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -76,7 +79,7 @@ export function processInciteRebellion(
 
   // Success depends on target stability and approval
   const baseChance = (100 - target.stability) / 100 * 0.5 + (100 - target.approval) / 100 * 0.3;
-  const success = Math.random() < baseChance + 0.2;
+  const success = rng() < baseChance + 0.2;
 
   if (success) {
     target.stability = clamp(target.stability - 20, 0, 100);
@@ -121,6 +124,7 @@ export function processInciteRebellion(
 export function processSabotage(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'sabotage' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -132,7 +136,7 @@ export function processSabotage(
 
   const techAdvantage = Math.max(0, from.techLevel - target.techLevel);
   const successChance = 0.4 + techAdvantage * 0.1;
-  const success = Math.random() < successChance;
+  const success = rng() < successChance;
 
   const effects: ActionEffect[] = [
     { description: `Budget -$${cost}B`, known: true },
@@ -187,6 +191,7 @@ export function processSabotage(
 export function processCyberAttack(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'cyber_attack' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -197,8 +202,8 @@ export function processCyberAttack(
 
   from.economy.budget -= cost;
 
-  const cyberPower = from.techLevel * (1 + Math.random() * 0.5);
-  const cyberDefense = target.techLevel * (1 + Math.random() * 0.3);
+  const cyberPower = from.techLevel * (1 + rng() * 0.5);
+  const cyberDefense = target.techLevel * (1 + rng() * 0.3);
   const success = cyberPower > cyberDefense;
 
   const effects: ActionEffect[] = [
@@ -233,7 +238,7 @@ export function processCyberAttack(
     }
 
     // Low detection chance for cyber
-    const detected = Math.random() < 0.2;
+    const detected = rng() < 0.2;
     if (detected) {
       effects.push({ description: 'Attack traced back — cover blown', known: true });
       from.diplomaticInfluence = clamp(from.diplomaticInfluence - 5, 0, 100);
@@ -251,6 +256,7 @@ export function processCyberAttack(
 export function processCoupAttempt(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'coup_attempt' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -264,11 +270,11 @@ export function processCoupAttempt(
 
   // Success depends on target stability/approval — harder in stable countries
   const baseChance = (100 - target.stability) / 200 + (100 - target.approval) / 200;
-  const success = Math.random() < baseChance;
+  const success = rng() < baseChance;
 
   if (success) {
     target.stability = clamp(target.stability - 40, 0, 100);
-    target.approval = 30 + Math.random() * 20; // new government starts ~40% approval
+    target.approval = 30 + rng() * 20; // new government starts ~40% approval
     target.military.army = Math.floor(target.military.army * 0.7); // army split
     target.economy.gdp *= 0.9;
     target.diplomaticInfluence = clamp(target.diplomaticInfluence - 20, 0, 100);
@@ -377,6 +383,7 @@ export function processPropaganda(
 export function processFalseFlag(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'false_flag' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -395,7 +402,7 @@ export function processFalseFlag(
 
   // Does the target believe it?
   const believability = 0.5 + (from.techLevel - target.techLevel) * 0.05;
-  const believed = Math.random() < believability;
+  const believed = rng() < believability;
 
   if (believed) {
     // Target blames the framed country

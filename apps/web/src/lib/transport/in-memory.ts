@@ -13,14 +13,14 @@ import {
   PROCESSING_CHAINS,
   getStartingTechs,
   computeTechBonuses,
-  createAIState,
 } from '@conflict-game/game-logic';
-import type { AIState } from '@conflict-game/game-logic';
 import {
   GameLoop,
   InMemoryGameStateStore,
   enqueueAction,
+  createAIState,
   type GameLoopAdapter,
+  type AIState,
 } from '@conflict-game/game-engine';
 import type { GameTransport, SessionOptions, TransportHandlers } from './types';
 

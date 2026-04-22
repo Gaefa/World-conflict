@@ -1,4 +1,5 @@
 import type { GameState, CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import type { RNG } from '@conflict-game/game-logic';
 
 // ─── AI Strategy Types ───────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ export function computeAIActions(
   state: GameState,
   aiState: AIState,
   currentTick: number,
+  rng: RNG,
 ): PlayerAction[] {
   const country = state.countries[aiState.countryCode];
   if (!country) return [];
@@ -132,19 +134,19 @@ export function computeAIActions(
 
   // ─── Economic Actions ──────────────────────────────────────────
   if (p.economy > 0.4 || country.economy.gdpGrowth < 0) {
-    const econActions = computeEconomicActions(country, p, diff);
+    const econActions = computeEconomicActions(country, p, diff, rng);
     actions.push(...econActions);
   }
 
   // ─── Military Actions ──────────────────────────────────────────
   if (p.aggression > 0.3) {
-    const milActions = computeMilitaryActions(state, aiState, country, diff);
+    const milActions = computeMilitaryActions(state, aiState, country, diff, rng);
     actions.push(...milActions);
   }
 
   // ─── Diplomatic Actions ────────────────────────────────────────
   if (p.diplomacy > 0.3) {
-    const diploActions = computeDiplomaticActions(state, aiState, country, diff);
+    const diploActions = computeDiplomaticActions(state, aiState, country, diff, rng);
     actions.push(...diploActions);
   }
 
@@ -156,7 +158,7 @@ export function computeAIActions(
 
   // ─── Intelligence Actions ──────────────────────────────────────
   if (p.aggression > 0.4 || p.diplomacy > 0.6) {
-    const intelActions = computeIntelActions(state, aiState, country, diff);
+    const intelActions = computeIntelActions(state, aiState, country, diff, rng);
     actions.push(...intelActions);
   }
 
@@ -191,6 +193,7 @@ function computeEconomicActions(
   country: CountryState,
   p: AIPersonality,
   diff: number,
+  rng: RNG,
 ): PlayerAction[] {
   const actions: PlayerAction[] = [];
 
@@ -202,7 +205,7 @@ function computeEconomicActions(
   }
 
   // Budget allocation — economic strategy focuses on economy
-  if (p.economy > 0.7 && Math.random() < 0.3 * diff) {
+  if (p.economy > 0.7 && rng() < 0.3 * diff) {
     const focusCategory = p.strategy === 'aggressive' ? 'military' as const
       : p.strategy === 'economic' ? 'economy' as const
       : 'technology' as const;
@@ -221,6 +224,7 @@ function computeMilitaryActions(
   aiState: AIState,
   country: CountryState,
   diff: number,
+  rng: RNG,
 ): PlayerAction[] {
   const actions: PlayerAction[] = [];
   const p = aiState.personality;
@@ -235,12 +239,12 @@ function computeMilitaryActions(
     const enemyPower = enemyCountry.indexOfPower;
 
     // Airstrike if stronger
-    if (myPower > enemyPower * 0.8 && Math.random() < p.aggression * diff) {
+    if (myPower > enemyPower * 0.8 && rng() < p.aggression * diff) {
       actions.push({ type: 'airstrike', targetCountry: enemy, intensity: 'conventional' });
     }
 
     // Cyber attack
-    if (Math.random() < 0.3 * diff) {
+    if (rng() < 0.3 * diff) {
       actions.push({ type: 'cyber_attack', targetCountry: enemy, target: 'military' });
     }
 
@@ -253,19 +257,19 @@ function computeMilitaryActions(
   }
 
   // Не в войне — оценка угроз
-  if (p.aggression > 0.6 && Math.random() < (p.aggression * 0.1 * diff)) {
+  if (p.aggression > 0.6 && rng() < (p.aggression * 0.1 * diff)) {
     // Агрессивный AI ищет слабую цель
     const target = findWeakTarget(state, aiState, country);
     if (target && p.riskTolerance > 0.5) {
       // Сначала ищем повод (шпионаж, диверсия, потом война)
-      if (Math.random() < 0.3) {
+      if (rng() < 0.3) {
         actions.push({ type: 'sabotage', targetCountry: target, target: 'infrastructure' });
       }
     }
   }
 
   // Build army if military-focused
-  if (p.aggression > 0.5 && Math.random() < 0.2 * diff) {
+  if (p.aggression > 0.5 && rng() < 0.2 * diff) {
     actions.push({
       type: 'create_army',
       armyType: 'infantry',
@@ -284,13 +288,14 @@ function computeDiplomaticActions(
   aiState: AIState,
   country: CountryState,
   diff: number,
+  rng: RNG,
 ): PlayerAction[] {
   const actions: PlayerAction[] = [];
   const p = aiState.personality;
 
   // Ищем потенциальных союзников (нет отношений, сильные страны)
-  if (aiState.allies.length < 3 && Math.random() < p.diplomacy * 0.3 * diff) {
-    const candidate = findAllyCandidate(state, aiState);
+  if (aiState.allies.length < 3 && rng() < p.diplomacy * 0.3 * diff) {
+    const candidate = findAllyCandidate(state, aiState, rng);
     if (candidate) {
       // Propose trade first, then alliance
       if (aiState.allies.length === 0) {
@@ -307,7 +312,7 @@ function computeDiplomaticActions(
   }
 
   // Санкции против врагов (дипломатичный подход)
-  if (p.diplomacy > 0.6 && aiState.enemies.length > 0 && Math.random() < 0.2 * diff) {
+  if (p.diplomacy > 0.6 && aiState.enemies.length > 0 && rng() < 0.2 * diff) {
     actions.push({
       type: 'propose_sanction',
       targetCountry: aiState.enemies[0],
@@ -319,7 +324,7 @@ function computeDiplomaticActions(
     r => r.toCountry === aiState.countryCode && r.status === 'proposed'
   );
   for (const proposal of pending) {
-    const shouldAccept = evaluateProposal(proposal, aiState, state);
+    const shouldAccept = evaluateProposal(proposal, aiState, state, rng);
     actions.push({
       type: shouldAccept ? 'accept_proposal' : 'reject_proposal',
       relationId: proposal.id,
@@ -363,18 +368,19 @@ function computeIntelActions(
   aiState: AIState,
   country: CountryState,
   diff: number,
+  rng: RNG,
 ): PlayerAction[] {
   const actions: PlayerAction[] = [];
 
   // Launch spy ops against enemies or neighbors
   const targets = aiState.enemies.length > 0
     ? aiState.enemies
-    : findNeighborCountries(state, aiState.countryCode);
+    : findNeighborCountries(state, aiState.countryCode, rng);
 
-  if (targets.length > 0 && Math.random() < 0.25 * diff) {
-    const target = targets[Math.floor(Math.random() * targets.length)];
+  if (targets.length > 0 && rng() < 0.25 * diff) {
+    const target = targets[Math.floor(rng() * targets.length)];
     const opTypes = ['human_intel', 'signal_intel', 'cyber_espionage', 'diplomatic_probe'] as const;
-    const opType = opTypes[Math.floor(Math.random() * opTypes.length)];
+    const opType = opTypes[Math.floor(rng() * opTypes.length)];
     actions.push({
       type: 'launch_spy_op',
       targetCountry: target,
@@ -383,7 +389,7 @@ function computeIntelActions(
   }
 
   // Boost counter-intel if enemies exist
-  if (aiState.enemies.length > 0 && Math.random() < 0.2 * diff) {
+  if (aiState.enemies.length > 0 && rng() < 0.2 * diff) {
     actions.push({ type: 'boost_counter_intel', amount: 5 });
   }
 
@@ -405,7 +411,7 @@ function findWeakTarget(state: GameState, aiState: AIState, self: CountryState):
   return candidates.length > 0 ? candidates[0][0] : null;
 }
 
-function findAllyCandidate(state: GameState, aiState: AIState): string | null {
+function findAllyCandidate(state: GameState, aiState: AIState, rng: RNG): string | null {
   const candidates = Object.entries(state.countries)
     .filter(([code]) =>
       code !== aiState.countryCode &&
@@ -415,10 +421,10 @@ function findAllyCandidate(state: GameState, aiState: AIState): string | null {
     .filter(([, c]) => c.stability > 40 && c.economy.gdp > 200)
     .sort(([, a], [, b]) => b.indexOfPower - a.indexOfPower);
 
-  return candidates.length > 0 ? candidates[Math.floor(Math.random() * Math.min(5, candidates.length))][0] : null;
+  return candidates.length > 0 ? candidates[Math.floor(rng() * Math.min(5, candidates.length))][0] : null;
 }
 
-function findNeighborCountries(state: GameState, code: string): string[] {
+function findNeighborCountries(state: GameState, code: string, rng: RNG): string[] {
   // Simplified: return countries with existing relations or random sample
   const related = new Set<string>();
   for (const rel of state.relations) {
@@ -429,7 +435,7 @@ function findNeighborCountries(state: GameState, code: string): string[] {
 
   // Fallback: random 3 countries
   const others = Object.keys(state.countries).filter(c => c !== code);
-  const shuffled = others.sort(() => Math.random() - 0.5);
+  const shuffled = others.sort(() => rng() - 0.5);
   return shuffled.slice(0, 3);
 }
 
@@ -437,6 +443,7 @@ function evaluateProposal(
   proposal: DiplomaticRelation,
   aiState: AIState,
   state: GameState,
+  rng: RNG,
 ): boolean {
   const p = aiState.personality;
   const other = proposal.fromCountry;
@@ -451,7 +458,7 @@ function evaluateProposal(
 
     case 'trade_agreement':
       // Usually accept trade
-      return p.economy > 0.2 || Math.random() < 0.7;
+      return p.economy > 0.2 || rng() < 0.7;
 
     case 'non_aggression':
       // Accept if not aggressive
@@ -466,6 +473,6 @@ function evaluateProposal(
       return aiState.allies.includes(other) && p.diplomacy > 0.3;
 
     default:
-      return Math.random() < 0.5;
+      return rng() < 0.5;
   }
 }

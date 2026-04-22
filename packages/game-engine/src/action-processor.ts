@@ -3,6 +3,7 @@ import type {
   ActionResult,
   GameState,
 } from '@conflict-game/shared-types';
+import type { RNG } from '@conflict-game/game-logic';
 import {
   processSetTaxRate,
   processAllocateBudget,
@@ -57,6 +58,7 @@ export function processAction(
   state: GameState,
   playerCountryCode: string,
   action: PlayerAction,
+  rng: RNG,
 ): ActionResult {
   const country = state.countries[playerCountryCode];
   if (!country) {
@@ -104,27 +106,27 @@ export function processAction(
     case 'airstrike':
       return processAirstrike(state, country, playerCountryCode, action);
     case 'invasion':
-      return processInvasion(state, country, playerCountryCode, action);
+      return processInvasion(state, country, playerCountryCode, action, rng);
     case 'naval_blockade':
       return processNavalBlockade(state, country, playerCountryCode, action);
 
     // ── Covert / hybrid warfare ──
     case 'proxy_war':
-      return processProxyWar(state, country, playerCountryCode, action);
+      return processProxyWar(state, country, playerCountryCode, action, rng);
     case 'incite_rebellion':
-      return processInciteRebellion(state, country, playerCountryCode, action);
+      return processInciteRebellion(state, country, playerCountryCode, action, rng);
     case 'sabotage':
-      return processSabotage(state, country, playerCountryCode, action);
+      return processSabotage(state, country, playerCountryCode, action, rng);
     case 'cyber_attack':
-      return processCyberAttack(state, country, playerCountryCode, action);
+      return processCyberAttack(state, country, playerCountryCode, action, rng);
     case 'coup_attempt':
-      return processCoupAttempt(state, country, playerCountryCode, action);
+      return processCoupAttempt(state, country, playerCountryCode, action, rng);
 
     // ── Information warfare ──
     case 'propaganda':
       return processPropaganda(state, country, playerCountryCode, action);
     case 'false_flag':
-      return processFalseFlag(state, country, playerCountryCode, action);
+      return processFalseFlag(state, country, playerCountryCode, action, rng);
 
     // ── Arms ──
     case 'arms_deal':
@@ -138,7 +140,7 @@ export function processAction(
     case 'smuggle':
       return processSmuggle(state, country, playerCountryCode, action);
     case 'resource_theft':
-      return processResourceTheft(state, country, playerCountryCode, action);
+      return processResourceTheft(state, country, playerCountryCode, action, rng);
     case 'build_stockpile':
       return processBuildStockpile(state, country, playerCountryCode, action);
     case 'manipulate_price':

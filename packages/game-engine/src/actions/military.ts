@@ -5,7 +5,7 @@ import type {
   GameState,
   CountryState,
 } from '@conflict-game/shared-types';
-import { recruitmentCost } from '@conflict-game/game-logic';
+import { recruitmentCost, type RNG } from '@conflict-game/game-logic';
 import { addEvent, clamp, fail, isAtWar, makeDipRelation } from './_helpers';
 
 export function processCreateArmy(
@@ -141,6 +141,7 @@ export function processAirstrike(
 export function processInvasion(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'invasion' },
+  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
@@ -167,7 +168,7 @@ export function processInvasion(
   const defensePower = target.military.army * 1.3 * (1 + target.military.techLevel * 0.1); // 30% defense bonus
 
   const ratio = attackPower / (attackPower + defensePower);
-  const success = Math.random() < ratio;
+  const success = rng() < ratio;
 
   const attackerLosses = Math.floor(committedTroops * (success ? 0.15 : 0.35));
   const defenderLosses = Math.floor(target.military.army * (success ? 0.4 : 0.15));

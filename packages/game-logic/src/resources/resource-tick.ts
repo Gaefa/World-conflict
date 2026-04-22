@@ -10,6 +10,7 @@ import type {
   DiplomaticRelation,
   GameEvent,
 } from '@conflict-game/shared-types';
+import type { RNG } from '../rng';
 
 // ── Constants ──
 
@@ -128,7 +129,7 @@ export interface ResourceTickResult {
  * Process one resource tick for the entire game state.
  * Mutates country resourceState, economy fields. Returns updated market + events.
  */
-export function processResourceTick(state: GameState): ResourceTickResult {
+export function processResourceTick(state: GameState, rng: RNG): ResourceTickResult {
   const events: GameEvent[] = [];
   const allResources = Object.keys(BASE_CONSUMPTION) as ResourceType[];
 
@@ -252,7 +253,7 @@ export function processResourceTick(state: GameState): ResourceTickResult {
 
     // Detection check
     const detectionChance = rel.smuggleDetectionChance ?? 0.15;
-    if (Math.random() < detectionChance) {
+    if (rng() < detectionChance) {
       // Caught!
       rel.status = 'broken';
       from.diplomaticInfluence = Math.max(0, from.diplomaticInfluence - 10);

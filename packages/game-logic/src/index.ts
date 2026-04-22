@@ -7,5 +7,4 @@ export * from './resources/processing-chains';
 export * from './resources/resource-tick';
 export * from './intelligence/intel-tick';
 export * from './technology/index';
-export * from './ai/index';
-export * from './victory/index';
+export * from './rng';
