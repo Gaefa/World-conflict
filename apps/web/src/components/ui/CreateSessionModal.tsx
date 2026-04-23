@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useLocaleStore } from '@/stores/localeStore';
 import { useCountries } from '@/hooks/useCountries';
 import { InMemoryTransport, WebSocketTransport } from '@/lib/transport';
+import { getLanInfo, isDesktopHost, type LanInfo } from '@/lib/electron-bridge';
 
 interface CreateSessionModalProps {
   onClose: () => void;
   mode?: 'singleplayer' | 'multiplayer';
 }
+
+/** Multiplayer sub-mode: am I running the server, or connecting to someone else's? */
+type MultiplayerRole = 'host' | 'join';
 
 export function CreateSessionModal({ onClose, mode = 'multiplayer' }: CreateSessionModalProps) {
   const [step, setStep] = useState<'create' | 'country' | 'ready'>('create');
@@ -20,12 +24,31 @@ export function CreateSessionModal({ onClose, mode = 'multiplayer' }: CreateSess
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
 
+  // Multiplayer-only: host LAN vs. join a friend's LAN/remote server.
+  // Desktop users default to 'host' because they have the embedded server;
+  // pure-browser users default to 'join' because they have nothing to host.
+  const [mpRole, setMpRole] = useState<MultiplayerRole>(() => (isDesktopHost() ? 'host' : 'join'));
+  const [joinUrl, setJoinUrl] = useState('');
+  const [lanInfo, setLanInfo] = useState<LanInfo | null>(null);
+
   const { t } = useLocaleStore();
   const { createSession, selectCountry, startGame, selectedCountryCode, setTransport } = useGameStore();
   const { data: countries } = useCountries();
 
+  // Pull LAN URLs once when the modal opens inside Electron so the host can
+  // copy them out and share with friends.
+  useEffect(() => {
+    if (mode !== 'multiplayer') return;
+    if (!isDesktopHost()) return;
+    getLanInfo().then(setLanInfo).catch(() => setLanInfo(null));
+  }, [mode]);
+
   const handleCreate = async () => {
     if (!sessionName.trim() || !playerName.trim()) {
+      setError(t.session_fill_fields);
+      return;
+    }
+    if (mode === 'multiplayer' && mpRole === 'join' && !joinUrl.trim()) {
       setError(t.session_fill_fields);
       return;
     }
@@ -34,7 +57,19 @@ export function CreateSessionModal({ onClose, mode = 'multiplayer' }: CreateSess
     try {
       // Fresh transport each time — ensures the previous session is cleaned up
       // and switches modes cleanly if the user reopens with a different choice.
-      setTransport(mode === 'singleplayer' ? new InMemoryTransport() : new WebSocketTransport());
+      // - Singleplayer: in-browser engine (InMemoryTransport).
+      // - Host LAN: WS transport to our own embedded server (default URL
+      //   = http://localhost:3002 in Electron).
+      // - Join LAN / remote: WS transport to whatever URL the user pasted.
+      let transport;
+      if (mode === 'singleplayer') {
+        transport = new InMemoryTransport();
+      } else if (mpRole === 'host') {
+        transport = new WebSocketTransport();
+      } else {
+        transport = new WebSocketTransport({ apiUrl: joinUrl.trim() });
+      }
+      setTransport(transport);
       await createSession(sessionName.trim(), playerName.trim(), { allowAI: aiEnabled, aiDifficulty });
       setStep('country');
     } catch (e: unknown) {
@@ -124,6 +159,77 @@ export function CreateSessionModal({ onClose, mode = 'multiplayer' }: CreateSess
                   className="w-full bg-bg-card border border-border-default rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-red focus:outline-none"
                 />
               </div>
+
+              {mode === 'multiplayer' && (
+                <div className="border border-border-default rounded p-3 space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setMpRole('host')}
+                      disabled={!isDesktopHost()}
+                      className={`flex-1 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-colors ${
+                        mpRole === 'host'
+                          ? 'bg-accent-red/20 text-accent-red border border-accent-red/40'
+                          : 'bg-bg-card border border-border-default text-text-muted hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'
+                      }`}
+                    >
+                      {'Host LAN'}
+                    </button>
+                    <button
+                      onClick={() => setMpRole('join')}
+                      className={`flex-1 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-colors ${
+                        mpRole === 'join'
+                          ? 'bg-accent-red/20 text-accent-red border border-accent-red/40'
+                          : 'bg-bg-card border border-border-default text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      {'Join'}
+                    </button>
+                  </div>
+
+                  {mpRole === 'host' && isDesktopHost() && (
+                    <div className="bg-bg-card border border-border-default rounded p-2 text-xs space-y-1">
+                      <div className="text-text-muted">
+                        {'Share these URLs with players on your LAN:'}
+                      </div>
+                      {lanInfo && lanInfo.ipv4.length > 0 ? (
+                        lanInfo.ipv4.map((ip) => (
+                          <code
+                            key={ip}
+                            className="block text-accent-green font-mono select-all"
+                          >
+                            {`http://${ip}:${lanInfo.port}`}
+                          </code>
+                        ))
+                      ) : (
+                        <div className="text-text-muted italic">
+                          {'No LAN interfaces detected'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {mpRole === 'host' && !isDesktopHost() && (
+                    <div className="text-text-muted text-xs">
+                      {'Hosting requires the desktop app. In a browser, choose Join.'}
+                    </div>
+                  )}
+
+                  {mpRole === 'join' && (
+                    <div>
+                      <label className="text-text-muted text-xs block mb-1">
+                        {'Server URL'}
+                      </label>
+                      <input
+                        type="text"
+                        value={joinUrl}
+                        onChange={(e) => setJoinUrl(e.target.value)}
+                        placeholder="http://192.168.1.42:3002"
+                        className="w-full bg-bg-card border border-border-default rounded px-3 py-1.5 text-text-primary placeholder:text-text-muted focus:border-accent-red focus:outline-none text-sm font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="border border-border-default rounded p-3 space-y-3">
                 <div className="flex items-center justify-between">

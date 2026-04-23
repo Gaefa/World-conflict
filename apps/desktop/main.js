@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog, protocol, net } = require('electron');
+const { app, BrowserWindow, dialog, protocol, net, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const { pathToFileURL } = require('url');
 
 // Register a privileged custom scheme BEFORE app is ready. This scheme
@@ -152,8 +153,14 @@ async function startServerInProcess() {
   }
 
   // Server reads PORT/HOST from env at module load time.
+  //
+  // Bind to 0.0.0.0 so the embedded server is reachable from other
+  // machines on the same LAN — that's the whole point of LAN-host mode.
+  // Singleplayer in-browser uses InMemoryTransport and never hits this
+  // port, so exposing it doesn't break singleplayer. macOS/Windows
+  // firewalls still gate inbound connections separately.
   process.env.PORT = String(SERVER_PORT);
-  process.env.HOST = '127.0.0.1';
+  process.env.HOST = '0.0.0.0';
   process.env.NODE_ENV = 'production';
 
   // Ensure module resolution finds bundled node_modules.
@@ -179,6 +186,28 @@ async function startServerInProcess() {
 
   await waitForPort(SERVER_PORT, 30000);
   log('Fastify server ready on', SERVER_PORT);
+}
+
+/**
+ * Collect every non-loopback IPv4 address on this machine. We use this
+ * to tell the renderer which URLs friends on the LAN can connect to.
+ *
+ * We skip IPv6 for the first cut — most home LANs work fine on IPv4,
+ * and Windows/mac link-local IPv6 addresses look scary to non-technical
+ * users who just want a string to paste into a chat.
+ */
+function getLanIpv4Addresses() {
+  const results = [];
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      // `net.family === 'IPv4'` in Node 18+; older Node returns 4.
+      const isV4 = net.family === 'IPv4' || net.family === 4;
+      if (!isV4 || net.internal) continue;
+      results.push(net.address);
+    }
+  }
+  return results;
 }
 
 function registerAppProtocol() {
@@ -269,6 +298,9 @@ function createMainWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      // Preload exposes window.conflictLAN.getInfo() — used by the LAN-host
+      // UI to display the current machine's LAN URLs.
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -299,6 +331,14 @@ function createMainWindow() {
     mainWindow = null;
   });
 }
+
+// IPC: renderer asks for our LAN addresses so it can show them to the host.
+// Registered before app.whenReady resolves so the renderer can call it as
+// soon as the window loads.
+ipcMain.handle('lan:get-info', () => ({
+  port: SERVER_PORT,
+  ipv4: getLanIpv4Addresses(),
+}));
 
 app.whenReady().then(async () => {
   try {

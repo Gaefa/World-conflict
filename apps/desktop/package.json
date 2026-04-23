@@ -22,7 +22,8 @@
       "output": "release"
     },
     "files": [
-      "main.js"
+      "main.js",
+      "preload.js"
     ],
     "extraResources": [
       {
