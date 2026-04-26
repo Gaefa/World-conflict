@@ -356,6 +356,18 @@ export const en: Translations = {
   intel_asset_type_scientist: 'Scientist',
   intel_asset_type_general: 'General',
   intel_asset_type_president: 'President',
+  intel_smuggle_header: 'Smuggle Route',
+  intel_smuggle_resource: 'Resource',
+  intel_smuggle_method: 'Method',
+  intel_smuggle_start: 'Start Smuggling',
+  intel_smuggle_cost: '$3B',
+  intel_smuggle_eff: 'Bypass sanctions, {risk} detection/tick',
+  intel_smuggle_land: 'Land Border',
+  intel_smuggle_sea: 'Sea Route',
+  intel_smuggle_intermediary: 'Intermediary',
+  intel_smuggle_pouch: 'Diplomatic Pouch',
+  econ_stockpile_for: 'Reserve:',
+  econ_manip_resource: 'Resource:',
 
   // Research tab
   research_branch_military: 'Military',

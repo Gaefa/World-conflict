@@ -49,7 +49,7 @@ function getRevealsLabel(t: Translations, reveals: string): string {
   return map[reveals] ?? reveals;
 }
 
-export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerCountryCode }: TabProps) {
+export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerCountryCode, hasSanctions }: TabProps) {
   const { t } = useLocaleStore();
   const [intelSub, setIntelSub] = useState<'overview' | 'dossiers' | 'ops' | 'covert' | 'assets'>('overview');
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
@@ -83,7 +83,7 @@ export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, 
       {intelSub === 'overview' && <IntelOverviewSub country={country} intel={intel} canAct={canAct} act={act} />}
       {intelSub === 'dossiers' && <IntelDossiersSub country={country} intel={intel} />}
       {intelSub === 'ops' && <IntelOpsSub country={country} intel={intel} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} />}
-      {intelSub === 'covert' && <IntelCovertSub country={country} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} />}
+      {intelSub === 'covert' && <IntelCovertSub country={country} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} hasSanctions={hasSanctions} />}
       {intelSub === 'assets' && <IntelAssetsSub country={country} canAct={canAct} act={act} />}
     </div>
   );
@@ -341,10 +341,19 @@ function IntelAssetsSub({ country, canAct, act }: {
   );
 }
 
-function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: {
-  country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasTarget: boolean; targetCountryCode?: string | null;
+function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode, hasSanctions }: {
+  country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasTarget: boolean; targetCountryCode?: string | null; hasSanctions?: boolean;
 }) {
   const { t } = useLocaleStore();
+  const [smuggleRes, setSmuggleRes] = useState<import('@conflict-game/shared-types').ResourceType>('oil');
+  const [smuggleMethod, setSmuggleMethod] = useState<'land_border' | 'sea_route' | 'intermediary_country' | 'diplomatic_pouch'>('sea_route');
+  const smuggleResources: import('@conflict-game/shared-types').ResourceType[] = ['oil','gas','coal','iron','rareEarth','wheat','steel','electronics'];
+  const smuggleMethods: { key: 'land_border' | 'sea_route' | 'intermediary_country' | 'diplomatic_pouch'; label: string; risk: string }[] = [
+    { key: 'land_border',          label: t.intel_smuggle_land,         risk: '15%' },
+    { key: 'sea_route',            label: t.intel_smuggle_sea,          risk: '25%' },
+    { key: 'intermediary_country', label: t.intel_smuggle_intermediary, risk: '10%' },
+    { key: 'diplomatic_pouch',     label: t.intel_smuggle_pouch,        risk: '5%' },
+  ];
 
   return (
     <div>
@@ -394,6 +403,50 @@ function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: 
           </div>
         </div>
       </div>
+
+      {/* ── Smuggle section (shown when under sanctions or when target selected) ── */}
+      {(hasSanctions || hasTarget) && (
+        <div className="mt-3 border-t border-border-default pt-3">
+          <h4 className="text-xs font-bold uppercase text-severity-high mb-2">{t.intel_smuggle_header}</h4>
+          <div className="grid grid-cols-2 gap-3 items-start">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted w-16 shrink-0">{t.intel_smuggle_resource}</span>
+                <select
+                  value={smuggleRes}
+                  onChange={e => setSmuggleRes(e.target.value as any)}
+                  className="flex-1 text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
+                >
+                  {smuggleResources.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted w-16 shrink-0">{t.intel_smuggle_method}</span>
+                <select
+                  value={smuggleMethod}
+                  onChange={e => setSmuggleMethod(e.target.value as any)}
+                  className="flex-1 text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
+                >
+                  {smuggleMethods.map(m => (
+                    <option key={m.key} value={m.key}>{m.label} ({m.risk})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <ActionBtn
+                label={t.intel_smuggle_start}
+                cost={t.intel_smuggle_cost}
+                effect={t.intel_smuggle_eff.replace('{risk}', smuggleMethods.find(m => m.key === smuggleMethod)?.risk ?? '?')}
+                disabled={!canAct || !hasTarget || country.economy.budget < 3}
+                onClick={() => act({ type: 'smuggle', targetCountry: targetCountryCode!, resource: smuggleRes, amount: 10, method: smuggleMethod })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

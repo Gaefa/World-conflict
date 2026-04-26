@@ -357,6 +357,21 @@ export interface Translations {
   intel_asset_type_scientist: string;
   intel_asset_type_general: string;
   intel_asset_type_president: string;
+  // Smuggle UI
+  intel_smuggle_header: string;
+  intel_smuggle_resource: string;
+  intel_smuggle_method: string;
+  intel_smuggle_start: string;
+  intel_smuggle_cost: string;
+  intel_smuggle_eff: string;
+  intel_smuggle_land: string;
+  intel_smuggle_sea: string;
+  intel_smuggle_intermediary: string;
+  intel_smuggle_pouch: string;
+
+  // ── Economy tab extra ──
+  econ_stockpile_for: string;
+  econ_manip_resource: string;
 
   // ── Research tab ──
   research_branch_military: string;

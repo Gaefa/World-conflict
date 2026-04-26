@@ -207,25 +207,56 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
   const rs = country.resourceState ?? {};
   const resourceCategories = getResourceCategories(t);
 
+  // Smart stockpile: pick highest-deficit resource, fallback to 'oil'
+  const topDeficitResource: ResourceType = (() => {
+    let best: ResourceType = 'oil';
+    let bestVal = 0;
+    for (const [r, b] of Object.entries(rs)) {
+      if (b && b.deficit > bestVal) { bestVal = b.deficit; best = r as ResourceType; }
+    }
+    return best;
+  })();
+  const [stockpileRes, setStockpileRes] = useState<ResourceType>(topDeficitResource);
+  const allResourceTypes: ResourceType[] = [
+    'oil','gas','coal','iron','copper','aluminum','rareEarth','lithium',
+    'wheat','rice','fish','freshWater','steel','electronics','semiconductors',
+  ];
+
   return (
     <div className="space-y-3">
       {/* Stockpile action */}
       {canAct && (
-        <div className="flex gap-2 mb-2">
-          <ActionBtn
-            label={t.econ_build_stockpile_3}
-            cost={t.econ_cost_varies}
-            effect={t.econ_reserves_3}
-            disabled={!canAct || country.economy.budget < 5}
-            onClick={() => act({ type: 'build_stockpile', resource: 'oil', months: 3 })}
-          />
-          <ActionBtn
-            label={t.econ_build_stockpile_6}
-            cost={t.econ_cost_varies}
-            effect={t.econ_reserves_6}
-            disabled={!canAct || country.economy.budget < 10}
-            onClick={() => act({ type: 'build_stockpile', resource: 'oil', months: 6 })}
-          />
+        <div className="mb-2">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs text-text-muted">{t.econ_stockpile_for}</span>
+            <select
+              value={stockpileRes}
+              onChange={e => setStockpileRes(e.target.value as ResourceType)}
+              className="text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
+            >
+              {allResourceTypes.map(r => (
+                <option key={r} value={r}>
+                  {getResourceLabel(t, r)}{rs[r]?.deficit ? ` ⚠ -${rs[r]!.deficit.toFixed(1)}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <ActionBtn
+              label={`${t.econ_build_stockpile_3} (${getResourceLabel(t, stockpileRes)})`}
+              cost={t.econ_cost_varies}
+              effect={t.econ_reserves_3}
+              disabled={!canAct || country.economy.budget < 5}
+              onClick={() => act({ type: 'build_stockpile', resource: stockpileRes, months: 3 })}
+            />
+            <ActionBtn
+              label={`${t.econ_build_stockpile_6} (${getResourceLabel(t, stockpileRes)})`}
+              cost={t.econ_cost_varies}
+              effect={t.econ_reserves_6}
+              disabled={!canAct || country.economy.budget < 10}
+              onClick={() => act({ type: 'build_stockpile', resource: stockpileRes, months: 6 })}
+            />
+          </div>
         </div>
       )}
 
@@ -302,6 +333,8 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
 function EconPolicySub({ country, canAct, act, hasSanctions }: { country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasSanctions?: boolean }) {
   const { t } = useLocaleStore();
   const e = country.economy;
+  const [manipRes, setManipRes] = useState<ResourceType>('oil');
+  const manipResources: ResourceType[] = ['oil', 'gas', 'coal', 'iron', 'rareEarth', 'wheat', 'steel'];
 
   return (
     <div className={`grid ${hasSanctions ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
@@ -364,19 +397,31 @@ function EconPolicySub({ country, canAct, act, hasSanctions }: { country: Countr
       )}
       <div>
         <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.econ_price_manip_header}</h4>
+        <div className="mb-2 flex items-center gap-1">
+          <span className="text-xs text-text-muted">{t.econ_manip_resource}</span>
+          <select
+            value={manipRes}
+            onChange={e => setManipRes(e.target.value as ResourceType)}
+            className="text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
+          >
+            {manipResources.map(r => (
+              <option key={r} value={r}>{getResourceLabel(t, r)}</option>
+            ))}
+          </select>
+        </div>
         <ActionBtn
           label={t.econ_production_cut}
           cost={t.econ_production_cut_cost}
           effect={t.econ_production_cut_eff}
           disabled={!canAct}
-          onClick={() => act({ type: 'manipulate_price', resource: 'oil', direction: 'increase', method: 'production_cut' })}
+          onClick={() => act({ type: 'manipulate_price', resource: manipRes, direction: 'increase', method: 'production_cut' })}
         />
         <ActionBtn
           label={t.econ_dump_stockpile}
           cost={t.econ_dump_stockpile_cost}
           effect={t.econ_dump_stockpile_eff}
           disabled={!canAct}
-          onClick={() => act({ type: 'manipulate_price', resource: 'oil', direction: 'decrease', method: 'dump_stockpile' })}
+          onClick={() => act({ type: 'manipulate_price', resource: manipRes, direction: 'decrease', method: 'dump_stockpile' })}
         />
       </div>
     </div>

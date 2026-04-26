@@ -356,6 +356,18 @@ export const ru: Translations = {
   intel_asset_type_scientist: 'Учёный',
   intel_asset_type_general: 'Генерал',
   intel_asset_type_president: 'Президент',
+  intel_smuggle_header: 'Контрабандный маршрут',
+  intel_smuggle_resource: 'Ресурс',
+  intel_smuggle_method: 'Метод',
+  intel_smuggle_start: 'Начать контрабанду',
+  intel_smuggle_cost: '$3 млрд',
+  intel_smuggle_eff: 'Обход санкций, риск обнаружения {risk}/тик',
+  intel_smuggle_land: 'Сухопутная граница',
+  intel_smuggle_sea: 'Морской путь',
+  intel_smuggle_intermediary: 'Посредник',
+  intel_smuggle_pouch: 'Диппочта',
+  econ_stockpile_for: 'Резерв:',
+  econ_manip_resource: 'Ресурс:',
 
   // Research tab
   research_branch_military: 'Военные',
