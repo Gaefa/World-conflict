@@ -3,7 +3,8 @@
 import { create } from 'zustand';
 import type { GameState, GameStateDelta, PlayerAction, ActionResult } from '@conflict-game/shared-types';
 import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
-import { WebSocketTransport, type GameTransport } from '@/lib/transport';
+import { WebSocketTransport, InMemoryTransport, type GameTransport } from '@/lib/transport';
+import { saveGame as idbSaveGame, loadGame as idbLoadGame, type SaveSnapshot } from '@/lib/save-store';
 
 interface GameStore {
   // Connection
@@ -34,6 +35,12 @@ interface GameStore {
   sendAction: (action: PlayerAction) => void;
   togglePause: () => void;
   applyDelta: (delta: GameStateDelta) => void;
+  /** True when the active transport is singleplayer and a game is running. */
+  canSave: boolean;
+  /** Persist current game state to a named IndexedDB slot. */
+  saveGame: (slotName: string) => Promise<void>;
+  /** Restore a previously saved slot and resume ticking. */
+  loadGame: (snap: SaveSnapshot) => Promise<void>;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -47,6 +54,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedCountryCode: null,
   isPaused: false,
   lastActionResult: null,
+  canSave: false,
 
   setTransport: (transport) => {
     // Swap transports — used when switching between multiplayer and singleplayer.
@@ -77,7 +85,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { transport, sessionId, playerId } = get();
     if (!sessionId || !playerId) return;
     const initialState = await transport.startGame(sessionId, playerId);
-    set({ gameState: initialState, currentTick: 0 });
+    const canSave = transport instanceof InMemoryTransport;
+    set({ gameState: initialState, currentTick: 0, canSave });
     get().connectToGame();
   },
 
@@ -126,6 +135,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   togglePause: () => {
     get().transport.togglePause();
+  },
+
+  saveGame: async (slotName) => {
+    const { transport, gameState, currentTick } = get();
+    if (!(transport instanceof InMemoryTransport)) return;
+    const snap = transport.captureSnapshot();
+    if (!snap) return;
+    await idbSaveGame({
+      name: slotName,
+      timestamp: Date.now(),
+      tick: currentTick,
+      sessionName: gameState?.session.name ?? slotName,
+      ...snap,
+    });
+  },
+
+  loadGame: async (snap) => {
+    const { transport: oldTransport } = get();
+    // Cleanly disconnect any current session.
+    oldTransport.disconnect();
+
+    // Always load into a fresh InMemoryTransport.
+    const transport = new InMemoryTransport();
+    const restoredState = transport.restoreFromSave(
+      snap.gameState,
+      snap.aiStates,
+      snap.playerCountryCode,
+      snap.playerId,
+    );
+    set({
+      transport,
+      sessionId: restoredState.session.id,
+      playerId: snap.playerId,
+      gameState: restoredState,
+      currentTick: restoredState.session.currentTick,
+      tensionIndex: restoredState.tensionIndex,
+      canSave: true,
+      connected: false,
+    });
+    get().connectToGame();
   },
 
   applyDelta: (delta) => {

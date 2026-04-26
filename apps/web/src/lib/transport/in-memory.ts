@@ -239,4 +239,80 @@ export class InMemoryTransport implements GameTransport {
       this.handlers?.onSessionStatus({ status: 'paused' });
     }
   }
+
+  // ─── Save / load support ──────────────────────────────────────────────────
+
+  /**
+   * Capture a JSON-safe snapshot of the current engine state. Returns null
+   * if there is no active session (nothing to save).
+   */
+  captureSnapshot(): {
+    gameState: import('@conflict-game/shared-types').GameState;
+    aiStates: Record<string, AIState>;
+    playerCountryCode: string;
+    playerId: string;
+  } | null {
+    if (!this.session || !this.player?.countryCode) return null;
+    const gs = this.store.getState(this.session.id);
+    if (!gs) return null;
+    const sessionAI = this.aiStates.get(this.session.id);
+    const aiStates: Record<string, AIState> = sessionAI
+      ? Object.fromEntries(sessionAI.entries())
+      : {};
+    // Deep-clone via JSON so callers always get an independent copy.
+    return {
+      gameState: JSON.parse(JSON.stringify(gs)),
+      aiStates: JSON.parse(JSON.stringify(aiStates)),
+      playerCountryCode: this.player.countryCode,
+      playerId: this.player.id,
+    };
+  }
+
+  /**
+   * Restore engine state from a previously captured snapshot, then start
+   * ticking. Returns the restored `GameState` so `gameStore` can populate
+   * its own state without an extra round-trip.
+   *
+   * This does NOT call `handlers.onConnected` — the store must call
+   * `connectToGame()` after calling this.
+   */
+  restoreFromSave(
+    gameState: import('@conflict-game/shared-types').GameState,
+    aiStates: Record<string, AIState>,
+    playerCountryCode: string,
+    playerId: string,
+  ): import('@conflict-game/shared-types').GameState {
+    const sessionId = gameState.session.id;
+    const sessionName = gameState.session.name;
+
+    // Rebuild LocalSession + LocalPlayer records.
+    this.session = {
+      id: sessionId,
+      name: sessionName,
+      hostPlayerId: gameState.session.hostPlayerId,
+      settings: gameState.session.settings,
+      status: 'active',
+      createdAt: new Date(gameState.session.createdAt),
+    };
+    this.player = {
+      id: playerId,
+      sessionId,
+      name:
+        gameState.players.find(p => p.id === playerId)?.username ?? playerCountryCode,
+      countryCode: playerCountryCode,
+    };
+
+    // Re-hydrate the engine store.
+    const restoredState: import('@conflict-game/shared-types').GameState = {
+      ...JSON.parse(JSON.stringify(gameState)),
+      session: { ...gameState.session, status: 'active' },
+    };
+    this.store.setState(sessionId, restoredState);
+
+    // Re-hydrate AI states.
+    const sessionAI = new Map<string, AIState>(Object.entries(aiStates));
+    this.aiStates.set(sessionId, sessionAI);
+
+    return restoredState;
+  }
 }

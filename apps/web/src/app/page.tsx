@@ -7,6 +7,7 @@ import { EventsFeed } from '@/components/panels/EventsFeed';
 import { CountryPanel } from '@/components/panels/CountryPanel';
 import { BottomTabs } from '@/components/panels/BottomTabs';
 import { CreateSessionModal } from '@/components/ui/CreateSessionModal';
+import { SaveLoadModal } from '@/components/ui/SaveLoadModal';
 import { ActionToast } from '@/components/ui/ActionToast';
 import { LocalePicker } from '@/components/ui/LocalePicker';
 import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
@@ -18,6 +19,7 @@ import { useCountries } from '@/hooks/useCountries';
 
 export default function Home() {
   const [modalMode, setModalMode] = useState<null | 'singleplayer' | 'multiplayer'>(null);
+  const [saveLoadMode, setSaveLoadMode] = useState<null | 'save' | 'load'>(null);
   const [clickedCountryName, setClickedCountryName] = useState<string>('');
   const [showVictory, setShowVictory] = useState(true);
 
@@ -35,6 +37,7 @@ export default function Home() {
     sendAction,
     togglePause,
     playerId,
+    canSave,
   } = useGameStore();
 
   const { data: seedCountries } = useCountries();
@@ -170,6 +173,8 @@ export default function Home() {
         isPaused={isPaused}
         tensionIndex={tensionIndex}
         onTogglePause={togglePause}
+        canSave={canSave && gameState?.session.status === 'active'}
+        onSave={() => setSaveLoadMode('save')}
       />
 
       <main className="flex-1 flex overflow-hidden">
@@ -205,6 +210,12 @@ export default function Home() {
                 className="pointer-events-auto bg-accent-green hover:bg-green-600 text-white px-6 py-3 rounded font-bold uppercase tracking-wider transition-colors shadow-lg shadow-green-900/30 cursor-pointer"
               >
                 {t.mode_singleplayer}
+              </button>
+              <button
+                onClick={() => setSaveLoadMode('load')}
+                className="pointer-events-auto bg-bg-secondary hover:bg-bg-card text-text-secondary hover:text-text-primary px-6 py-3 rounded font-bold uppercase tracking-wider transition-colors shadow-lg border border-border-default cursor-pointer"
+              >
+                📂 Load
               </button>
               <button
                 onClick={() => setModalMode('multiplayer')}
@@ -249,6 +260,10 @@ export default function Home() {
 
       {modalMode && (
         <CreateSessionModal mode={modalMode} onClose={() => setModalMode(null)} />
+      )}
+
+      {saveLoadMode && (
+        <SaveLoadModal mode={saveLoadMode} onClose={() => setSaveLoadMode(null)} />
       )}
 
       {/* Victory overlay */}

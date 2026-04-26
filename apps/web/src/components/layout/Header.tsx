@@ -10,6 +10,8 @@ interface HeaderProps {
   isPaused: boolean;
   tensionIndex: number;
   onTogglePause?: () => void;
+  canSave?: boolean;
+  onSave?: () => void;
 }
 
 export function Header({
@@ -19,6 +21,8 @@ export function Header({
   isPaused,
   tensionIndex,
   onTogglePause,
+  canSave,
+  onSave,
 }: HeaderProps) {
   const { t, locale, setShowTutorial } = useLocaleStore();
 
@@ -43,6 +47,16 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-3">
+        {canSave && (
+          <button
+            onClick={onSave}
+            className="w-7 h-7 rounded-full border border-border-default bg-bg-card text-text-secondary hover:text-accent-green hover:border-accent-green transition-colors flex items-center justify-center text-sm"
+            title="Save game"
+            aria-label="Save game"
+          >
+            💾
+          </button>
+        )}
         <button
           onClick={() => setShowTutorial(true)}
           className="w-7 h-7 rounded-full border border-border-default bg-bg-card text-text-secondary hover:text-accent-red hover:border-accent-red transition-colors flex items-center justify-center text-sm font-bold"
