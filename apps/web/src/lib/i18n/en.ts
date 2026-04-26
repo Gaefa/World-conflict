@@ -252,6 +252,12 @@ export const en: Translations = {
   diplo_you_request: 'You Request (deficit)',
   diplo_send_trade: 'SEND TRADE PROPOSAL (12 months)',
   diplo_active_relations_header: 'Active Relations',
+  diplo_propose_peace: 'PROPOSE PEACE',
+  diplo_peace_cost: 'Stability +5',
+  diplo_peace_eff: 'End war, restore relations',
+  diplo_incoming_proposals: 'Incoming Proposals',
+  diplo_accept: 'Accept',
+  diplo_reject: 'Reject',
 
   // Intelligence tab
   intel_sub_overview: 'Overview',

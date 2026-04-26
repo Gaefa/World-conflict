@@ -252,6 +252,12 @@ export const ru: Translations = {
   diplo_you_request: 'Вы просите (дефицит)',
   diplo_send_trade: 'ОТПРАВИТЬ ПРЕДЛОЖЕНИЕ (12 мес.)',
   diplo_active_relations_header: 'Активные отношения',
+  diplo_propose_peace: 'ПРЕДЛОЖИТЬ МИР',
+  diplo_peace_cost: 'Стабильность +5',
+  diplo_peace_eff: 'Закончить войну, восстановить отношения',
+  diplo_incoming_proposals: 'Входящие предложения',
+  diplo_accept: 'Принять',
+  diplo_reject: 'Отклонить',
 
   // Intelligence tab
   intel_sub_overview: 'Обзор',

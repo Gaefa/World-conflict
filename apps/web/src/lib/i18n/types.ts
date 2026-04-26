@@ -253,6 +253,12 @@ export interface Translations {
   diplo_you_request: string;
   diplo_send_trade: string;
   diplo_active_relations_header: string;
+  diplo_propose_peace: string;
+  diplo_peace_cost: string;
+  diplo_peace_eff: string;
+  diplo_incoming_proposals: string;
+  diplo_accept: string;
+  diplo_reject: string;
 
   // ── Intelligence tab ──
   intel_sub_overview: string;

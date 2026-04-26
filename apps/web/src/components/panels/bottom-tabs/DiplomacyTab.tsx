@@ -18,6 +18,18 @@ export function DiplomacyTab({ country, canAct, onAction, targetCountryCode, pla
 
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
 
+  // War / peace state with target
+  const isAtWarWithTarget = hasTarget && relations?.some(
+    r => r.type === 'war' && r.status === 'active' &&
+      ((r.fromCountry === playerCountryCode && r.toCountry === targetCountryCode) ||
+       (r.fromCountry === targetCountryCode && r.toCountry === playerCountryCode))
+  );
+
+  // Incoming proposals (to this player, status=proposed)
+  const incomingProposals = relations?.filter(
+    r => r.status === 'proposed' && r.toCountry === playerCountryCode
+  ) ?? [];
+
   const sendTrade = () => {
     if (!hasTarget) return;
     const offers = Object.entries(tradeOffers)
@@ -97,6 +109,15 @@ export function DiplomacyTab({ country, canAct, onAction, targetCountryCode, pla
               disabled={!canAct || !hasTarget || country.diplomaticInfluence < 2}
               onClick={() => setShowTrade(true)}
             />
+            {isAtWarWithTarget && (
+              <ActionBtn
+                label={t.diplo_propose_peace}
+                cost={t.diplo_peace_cost}
+                effect={t.diplo_peace_eff}
+                disabled={!canAct}
+                onClick={() => act({ type: 'propose_peace', targetCountry: targetCountryCode! })}
+              />
+            )}
           </div>
         </div>
       ) : (
@@ -170,6 +191,38 @@ export function DiplomacyTab({ country, canAct, onAction, targetCountryCode, pla
           >
             {t.diplo_send_trade}
           </button>
+        </div>
+      )}
+
+      {/* Incoming proposals — accept / reject */}
+      {incomingProposals.length > 0 && (
+        <div className="mt-4 border-t border-border-default pt-3">
+          <h4 className="text-xs font-bold uppercase text-accent-amber mb-2">
+            ⚡ {t.diplo_incoming_proposals}
+          </h4>
+          <div className="space-y-1.5">
+            {incomingProposals.map(r => (
+              <div key={r.id} className="flex items-center gap-2 bg-bg-card border border-accent-amber/30 rounded px-2 py-1.5">
+                <span className="text-text-secondary text-xs font-bold uppercase flex-1">
+                  {r.fromCountry} → {({ alliance: t.rel_alliance, war: t.rel_war, trade_agreement: t.rel_trade, sanction: t.rel_sanction } as Record<string, string>)[r.type] ?? r.type}
+                </span>
+                <button
+                  disabled={!canAct}
+                  onClick={() => act({ type: 'accept_proposal', relationId: r.id })}
+                  className="px-2 py-0.5 text-xs bg-accent-green/20 text-accent-green border border-accent-green/40 rounded hover:bg-accent-green/30 disabled:opacity-40"
+                >
+                  {t.diplo_accept}
+                </button>
+                <button
+                  disabled={!canAct}
+                  onClick={() => act({ type: 'reject_proposal', relationId: r.id })}
+                  className="px-2 py-0.5 text-xs bg-severity-high/20 text-severity-high border border-severity-high/40 rounded hover:bg-severity-high/30 disabled:opacity-40"
+                >
+                  {t.diplo_reject}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
