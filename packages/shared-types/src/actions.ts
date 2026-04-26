@@ -44,7 +44,12 @@ export type PlayerAction =
   | LaunchDisinfoAction
   | SetIntelBudgetAction
   // Tech tree (v0.4)
-  | CancelResearchAction;
+  | CancelResearchAction
+  // v0.5 — strategic & abduction ops
+  | NuclearStrikeAction
+  | DroneRaidAction
+  | AbductAssetAction
+  | ReleaseAssetAction;
 
 // ── Existing actions ──
 
@@ -280,6 +285,36 @@ export interface LaunchDisinfoAction {
 export interface SetIntelBudgetAction {
   type: 'set_intel_budget';
   budget: number; // $B per tick
+}
+
+// ── v0.5: Strategic & abduction ops ──
+
+/** Nuclear strike — tactical (surgical) or strategic (city-busting) */
+export interface NuclearStrikeAction {
+  type: 'nuclear_strike';
+  targetCountry: string;
+  warhead: 'tactical' | 'strategic';
+}
+
+/** Drone raid on specific target category */
+export interface DroneRaidAction {
+  type: 'drone_raid';
+  targetCountry: string;
+  target: 'military' | 'infrastructure' | 'leadership';
+}
+
+/** Abduct a high-value asset (diplomat, scientist, general, or president) */
+export interface AbductAssetAction {
+  type: 'abduct_asset';
+  targetCountry: string;
+  assetType: import('./country').AssetType;
+}
+
+/** Release a held asset under specific terms */
+export interface ReleaseAssetAction {
+  type: 'release_asset';
+  assetId: string;
+  terms: 'ransom' | 'exchange' | 'goodwill';
 }
 
 // ── Result types ──

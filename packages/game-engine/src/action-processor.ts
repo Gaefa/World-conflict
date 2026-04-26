@@ -33,6 +33,8 @@ import {
   processAirstrike,
   processInvasion,
   processNavalBlockade,
+  processNuclearStrike,
+  processDroneRaid,
 } from './actions/military';
 import {
   processProxyWar,
@@ -42,6 +44,8 @@ import {
   processCoupAttempt,
   processPropaganda,
   processFalseFlag,
+  processAbductAsset,
+  processReleaseAsset,
 } from './actions/covert';
 import {
   processLaunchSpyOp,
@@ -158,6 +162,16 @@ export function processAction(
       return processLaunchDisinfo(state, country, action);
     case 'set_intel_budget':
       return processSetIntelBudget(country, action);
+
+    // v0.5: Strategic & abduction ops
+    case 'nuclear_strike':
+      return processNuclearStrike(state, country, playerCountryCode, action);
+    case 'drone_raid':
+      return processDroneRaid(state, country, playerCountryCode, action);
+    case 'abduct_asset':
+      return processAbductAsset(state, country, playerCountryCode, action, rng);
+    case 'release_asset':
+      return processReleaseAsset(state, country, playerCountryCode, action);
 
     default:
       return fail(action, 'Unknown action type');

@@ -126,6 +126,17 @@ export interface CountryMilitary {
   techLevel: number;      // 1-10
 }
 
+// ── Captured assets (diplomats, scientists, generals, presidents) ──
+
+export type AssetType = 'diplomat' | 'scientist' | 'general' | 'president';
+
+export interface HeldAsset {
+  id: string;
+  assetType: AssetType;
+  fromCountry: string;    // country this asset was taken from
+  capturedAtTick: number;
+}
+
 export interface CountryState {
   code: string;           // ISO 3166-1 alpha-2
   economy: CountryEconomy;
@@ -138,6 +149,7 @@ export interface CountryState {
   techLevel: number;      // 1-10
   diplomaticInfluence: number; // 0-100
   indexOfPower: number;   // calculated, 0-100
+  heldAssets?: HeldAsset[]; // v0.5: captured diplomatic/military personnel
   intel?: import('./intelligence.js').IntelligenceState; // v0.3: fog of war
   tech?: import('./technology.js').TechnologyState;      // v0.4: tech tree
 }

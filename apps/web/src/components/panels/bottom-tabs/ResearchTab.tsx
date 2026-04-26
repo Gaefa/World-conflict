@@ -8,7 +8,7 @@ import { type TabProps } from './_shared';
 
 // ── Tech Tree UI constants (inlined for Turbopack compat) ──
 
-type TechBranchKey = 'military' | 'economic' | 'cyber' | 'space' | 'biotech' | 'infrastructure';
+type TechBranchKey = 'military' | 'economic' | 'cyber' | 'space' | 'biotech' | 'infrastructure' | 'intelligence';
 
 function getBranchMeta(t: Translations): { key: TechBranchKey; label: string; icon: string }[] {
   return [
@@ -18,6 +18,7 @@ function getBranchMeta(t: Translations): { key: TechBranchKey; label: string; ic
     { key: 'space', label: t.research_branch_space, icon: '\u{1F680}' },
     { key: 'biotech', label: t.research_branch_biotech, icon: '\u{1F9EC}' },
     { key: 'infrastructure', label: t.research_branch_infra, icon: '\u{1F3D7}\uFE0F' },
+    { key: 'intelligence', label: t.research_branch_intel, icon: '\u{1F575}\uFE0F' },
   ];
 }
 
@@ -66,6 +67,13 @@ const TECH_TREE_UI: TechDefUI[] = [
   { id: 'infra_4', branch: 'infrastructure', tier: 4, name: 'Smart Cities', icon: '\u{1F3D9}\uFE0F', cost: 25, researchTicks: 8, prerequisites: ['infra_3', 'cyber_3'], effectDesc: ['Stability +0.4', 'GDP +0.5%', 'Approval +5'] },
   { id: 'infra_5', branch: 'infrastructure', tier: 5, name: 'Underground Bunkers', icon: '\u{1F3DA}\uFE0F', cost: 30, researchTicks: 10, prerequisites: ['infra_4'], effectDesc: ['Civilian def +25%', 'Stability +0.3'] },
   { id: 'infra_6', branch: 'infrastructure', tier: 6, name: 'Logistics Networks', icon: '\u{1F4E6}', cost: 35, researchTicks: 12, prerequisites: ['infra_5', 'econ_5'], effectDesc: ['All resources +15%', 'Trade +15%', 'Sanction res. +10'] },
+  // Military (advanced)
+  { id: 'mil_9', branch: 'military', tier: 9, name: 'Tactical Nukes', icon: '☢️', cost: 60, researchTicks: 20, prerequisites: ['mil_8'], effectDesc: ['Unlocks Tactical Nuclear Strike', '+5 warheads'] },
+  { id: 'mil_10', branch: 'military', tier: 10, name: 'Strategic Nuclear Arsenal', icon: '\u{1F4A3}', cost: 100, researchTicks: 30, prerequisites: ['mil_9'], effectDesc: ['Unlocks Strategic Nuclear Strike', '+10 warheads'] },
+  // Intelligence
+  { id: 'intel_1', branch: 'intelligence', tier: 1, name: 'Field Agents Network', icon: '\u{1F575}️', cost: 5, researchTicks: 3, prerequisites: [], effectDesc: ['Counter-intel +5', 'Intel capacity +1'] },
+  { id: 'intel_2', branch: 'intelligence', tier: 2, name: 'Deep Cover Assets', icon: '\u{1F977}', cost: 12, researchTicks: 6, prerequisites: ['intel_1', 'cyber_2'], effectDesc: ['Unlocks Abduct Diplomat/General/Scientist', 'Counter-intel +10'] },
+  { id: 'intel_3', branch: 'intelligence', tier: 3, name: 'Presidential Security Breach', icon: '\u{1F441}️', cost: 25, researchTicks: 10, prerequisites: ['intel_2', 'infra_5'], effectDesc: ['Unlocks Abduct President', 'Counter-intel +15'] },
 ];
 
 export function ResearchTab({ country, canAct, onAction }: TabProps) {

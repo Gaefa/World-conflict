@@ -222,6 +222,15 @@ export interface Translations {
   mil_naval_blockade: string;
   mil_naval_cost: string;
   mil_naval_eff: string;
+  mil_drone_raid: string;
+  mil_drone_raid_cost: string;
+  mil_drone_raid_eff: string;
+  mil_nuclear_tactical: string;
+  mil_nuclear_tactical_cost: string;
+  mil_nuclear_tactical_eff: string;
+  mil_nuclear_strategic: string;
+  mil_nuclear_strategic_cost: string;
+  mil_nuclear_strategic_eff: string;
 
   // ── Diplomacy tab ──
   diplo_stat_influence: string;
@@ -330,6 +339,24 @@ export interface Translations {
   intel_category_economy: string;
   intel_category_military: string;
   intel_category_stability: string;
+  intel_sub_assets: string;
+  intel_abduct_header: string;
+  intel_abduct_diplomat: string;
+  intel_abduct_diplomat_cost: string;
+  intel_abduct_diplomat_eff: string;
+  intel_abduct_president: string;
+  intel_abduct_president_cost: string;
+  intel_abduct_president_eff: string;
+  intel_held_assets_header: string;
+  intel_no_held_assets: string;
+  intel_captured_tick_fmt: string;
+  intel_release_ransom: string;
+  intel_release_exchange: string;
+  intel_release_goodwill: string;
+  intel_asset_type_diplomat: string;
+  intel_asset_type_scientist: string;
+  intel_asset_type_general: string;
+  intel_asset_type_president: string;
 
   // ── Research tab ──
   research_branch_military: string;
@@ -338,6 +365,7 @@ export interface Translations {
   research_branch_space: string;
   research_branch_biotech: string;
   research_branch_infra: string;
+  research_branch_intel: string;
   research_active_prefix: string;
   research_months_remaining_fmt: string;
   research_total_count_fmt: string;

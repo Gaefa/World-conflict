@@ -208,6 +208,116 @@ export function processInvasion(
   };
 }
 
+export function processNuclearStrike(
+  state: GameState,
+  from: CountryState,
+  fromCode: string,
+  action: PlayerAction & { type: 'nuclear_strike' },
+): ActionResult {
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not in game');
+
+  const researched = from.tech?.researchedTechs ?? [];
+  if (action.warhead === 'tactical' && !researched.includes('mil_9'))
+    return fail(action, 'Tactical nuclear weapons require Tactical Nukes (mil_9)');
+  if (action.warhead === 'strategic' && !researched.includes('mil_10'))
+    return fail(action, 'Strategic strike requires Strategic Nuclear Arsenal (mil_10)');
+
+  const warhadsNeeded = action.warhead === 'tactical' ? 1 : 3;
+  if (from.military.nuclearWeapons < warhadsNeeded)
+    return fail(action, `Need ${warhadsNeeded} warhead(s), have ${from.military.nuclearWeapons}`);
+
+  from.military.nuclearWeapons -= warhadsNeeded;
+  from.diplomaticInfluence = clamp(from.diplomaticInfluence - 30, 0, 100);
+  from.approval = clamp(from.approval - 20, 0, 100);
+
+  if (action.warhead === 'tactical') {
+    target.military.army = Math.floor(target.military.army * 0.6);
+    target.stability = clamp(target.stability - 30, 0, 100);
+    target.approval = clamp(target.approval - 15, 0, 100);
+    addEvent(state, 'military_incident',
+      `☢ Tactical nuclear strike on ${action.targetCountry}`,
+      `${fromCode} launched a tactical nuclear strike on ${action.targetCountry}. Military forces devastated.`,
+      'critical', [fromCode, action.targetCountry]);
+  } else {
+    target.economy.gdp *= 0.4;
+    target.military.army = Math.floor(target.military.army * 0.3);
+    target.stability = clamp(target.stability - 50, 0, 100);
+    target.approval = clamp(target.approval - 30, 0, 100);
+    // Global nuclear fallout — every country takes stability/approval hit
+    for (const [code, country] of Object.entries(state.countries)) {
+      if (code === fromCode || code === action.targetCountry) continue;
+      country.stability = clamp(country.stability - 5, 0, 100);
+      country.approval = clamp(country.approval - 5, 0, 100);
+      country.diplomaticInfluence = clamp(country.diplomaticInfluence - 5, 0, 100);
+    }
+    addEvent(state, 'military_incident',
+      `☢☢ STRATEGIC NUCLEAR STRIKE on ${action.targetCountry}`,
+      `${fromCode} has launched a strategic nuclear strike. Global fallout. International emergency.`,
+      'critical', Object.keys(state.countries));
+  }
+
+  return {
+    success: true, action,
+    message: `${action.warhead === 'tactical' ? 'Tactical' : 'Strategic'} nuclear strike on ${action.targetCountry}`,
+    effects: [
+      { description: `${warhadsNeeded} warhead(s) expended`, known: true },
+      { description: 'Diplomatic influence -30', known: true, value: '-30' },
+      { description: action.warhead === 'strategic' ? 'Global fallout — all countries affected' : 'Target military -40%', known: true },
+      { description: 'Permanent international condemnation', known: false },
+      { description: 'Retaliation strike possible', known: false },
+    ],
+  };
+}
+
+export function processDroneRaid(
+  state: GameState,
+  from: CountryState,
+  fromCode: string,
+  action: PlayerAction & { type: 'drone_raid' },
+): ActionResult {
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not in game');
+  if (!(from.tech?.researchedTechs ?? []).includes('mil_3'))
+    return fail(action, 'Drone Warfare technology (mil_3) required');
+
+  const cost = 3;
+  if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
+  from.economy.budget -= cost;
+
+  const atWar = isAtWar(state, fromCode, action.targetCountry);
+  if (!atWar) from.diplomaticInfluence = clamp(from.diplomaticInfluence - 8, 0, 100);
+
+  const effects: ActionEffect[] = [{ description: `Budget -$${cost}B`, known: true }];
+
+  switch (action.target) {
+    case 'military':
+      target.military.army = Math.floor(target.military.army * 0.95);
+      effects.push({ description: 'Target army -5%', known: true });
+      break;
+    case 'infrastructure':
+      target.economy.gdp *= 0.98;
+      target.economy.gdpGrowth -= 0.2;
+      effects.push({ description: 'Target GDP -2%, growth -0.2%', known: true });
+      break;
+    case 'leadership':
+      target.approval = clamp(target.approval - 10, 0, 100);
+      target.stability = clamp(target.stability - 5, 0, 100);
+      effects.push({ description: 'Target approval -10, stability -5', known: true });
+      break;
+  }
+
+  addEvent(state, 'military_incident',
+    `Drone raid on ${action.targetCountry}`,
+    `${fromCode} launched drone strikes targeting ${action.target} in ${action.targetCountry}.`,
+    'high', [fromCode, action.targetCountry]);
+
+  if (!atWar) effects.push({ description: 'Influence -8 (undeclared strike)', known: true, value: '-8' });
+  effects.push({ description: 'Retaliation possible', known: false });
+
+  return { success: true, action, message: `Drone raid on ${action.targetCountry} (${action.target})`, effects };
+}
+
 export function processNavalBlockade(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'naval_blockade' },

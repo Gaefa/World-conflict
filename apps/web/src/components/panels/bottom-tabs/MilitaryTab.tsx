@@ -156,6 +156,30 @@ export function MilitaryTab({
             />
           </div>
           <div>
+            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Advanced Ops</h4>
+            <ActionBtn
+              label={t.mil_drone_raid}
+              cost={t.mil_drone_raid_cost}
+              effect={t.mil_drone_raid_eff}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('mil_3') || country.economy.budget < 3}
+              onClick={() => act({ type: 'drone_raid', targetCountry: targetCountryCode!, target: 'military' })}
+            />
+            <ActionBtn
+              label={t.mil_nuclear_tactical}
+              cost={t.mil_nuclear_tactical_cost}
+              effect={t.mil_nuclear_tactical_eff}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('mil_9') || m.nuclearWeapons < 1}
+              onClick={() => act({ type: 'nuclear_strike', targetCountry: targetCountryCode!, warhead: 'tactical' })}
+            />
+            <ActionBtn
+              label={t.mil_nuclear_strategic}
+              cost={t.mil_nuclear_strategic_cost}
+              effect={t.mil_nuclear_strategic_eff}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('mil_10') || m.nuclearWeapons < 3}
+              onClick={() => act({ type: 'nuclear_strike', targetCountry: targetCountryCode!, warhead: 'strategic' })}
+            />
+          </div>
+          <div>
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Logistics</h4>
             <ActionBtn
               label="Build Stockpile (3mo)"

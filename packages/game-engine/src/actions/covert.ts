@@ -4,6 +4,7 @@ import type {
   ActionEffect,
   GameState,
   CountryState,
+  HeldAsset,
 } from '@conflict-game/shared-types';
 import type { RNG } from '@conflict-game/game-logic';
 import { addEvent, clamp, fail, makeDipRelation } from './_helpers';
@@ -462,4 +463,130 @@ export function processFalseFlag(
       ],
     };
   }
+}
+
+// ── v0.5: Abduction & asset operations ──────────────────────────────────────
+
+export function processAbductAsset(
+  state: GameState,
+  from: CountryState,
+  fromCode: string,
+  action: PlayerAction & { type: 'abduct_asset' },
+  rng: RNG,
+): ActionResult {
+  const target = state.countries[action.targetCountry];
+  if (!target) return fail(action, 'Target country not in game');
+
+  const researched = from.tech?.researchedTechs ?? [];
+  const reqTech = action.assetType === 'president' ? 'intel_3' : 'intel_2';
+  if (!researched.includes(reqTech))
+    return fail(action, `Requires ${reqTech === 'intel_3' ? 'Presidential Security Breach (intel_3)' : 'Deep Cover Assets (intel_2)'}`);
+
+  const cost = action.assetType === 'president' ? 15 : 5;
+  if (from.economy.budget < cost) return fail(action, `Need $${cost}B`);
+  from.economy.budget -= cost;
+
+  // Success probability: base 40% for diplomat, 25% for general, 15% for scientist, 8% for president
+  const baseProb: Record<string, number> = { diplomat: 0.40, scientist: 0.25, general: 0.30, president: 0.08 };
+  const targetCI = target.intel?.counterIntel ?? 30;
+  const fromCI = from.intel?.counterIntel ?? 30;
+  const prob = clamp((baseProb[action.assetType] ?? 0.2) * (1 + (fromCI - targetCI) / 100), 0.05, 0.7);
+
+  if (rng() > prob) {
+    // Caught
+    from.diplomaticInfluence = clamp(from.diplomaticInfluence - 20, 0, 100);
+    addEvent(state, 'diplomatic_incident',
+      `Abduction attempt foiled in ${action.targetCountry}`,
+      `${fromCode} agents caught attempting to abduct a ${action.assetType} in ${action.targetCountry}. Diplomatic crisis.`,
+      'critical', [fromCode, action.targetCountry]);
+    return {
+      success: false, action,
+      message: `Operation compromised — agents caught in ${action.targetCountry}`,
+      effects: [
+        { description: `Budget -$${cost}B (lost)`, known: true },
+        { description: 'Influence -20 (agents caught)', known: true, value: '-20' },
+        { description: 'War casus belli generated', known: false },
+      ],
+    };
+  }
+
+  // Success
+  if (!from.heldAssets) from.heldAssets = [];
+  const asset: HeldAsset = {
+    id: `asset-${fromCode}-${Date.now()}`,
+    assetType: action.assetType,
+    fromCountry: action.targetCountry,
+    capturedAtTick: state.session.currentTick,
+  };
+  from.heldAssets.push(asset);
+
+  if (action.assetType === 'president') {
+    target.stability = clamp(target.stability - 30, 0, 100);
+    target.approval = clamp(target.approval - 20, 0, 100);
+  }
+
+  addEvent(state, 'diplomatic_incident',
+    `${action.assetType} abducted from ${action.targetCountry}`,
+    `${fromCode} has successfully abducted a ${action.assetType} from ${action.targetCountry}.`,
+    'critical', [fromCode, action.targetCountry]);
+
+  return {
+    success: true, action,
+    message: `${action.assetType} successfully extracted from ${action.targetCountry}`,
+    effects: [
+      { description: `${action.assetType} held — use for leverage`, known: true },
+      { description: action.assetType === 'president' ? 'Target stability -30, approval -20' : 'Target destabilized', known: true },
+      { description: 'Can ransom, exchange, or release for goodwill', known: true },
+      { description: 'Target may retaliate', known: false },
+    ],
+  };
+}
+
+export function processReleaseAsset(
+  state: GameState,
+  from: CountryState,
+  fromCode: string,
+  action: PlayerAction & { type: 'release_asset' },
+): ActionResult {
+  if (!from.heldAssets) return fail(action, 'No assets held');
+  const assetIdx = from.heldAssets.findIndex((a) => a.id === action.assetId);
+  if (assetIdx === -1) return fail(action, 'Asset not found');
+
+  const asset = from.heldAssets[assetIdx];
+  from.heldAssets.splice(assetIdx, 1);
+
+  const effects: ActionEffect[] = [{ description: `${asset.assetType} released to ${asset.fromCountry}`, known: true }];
+
+  switch (action.terms) {
+    case 'ransom':
+      from.economy.budget += 5;
+      effects.push({ description: 'Ransom received: +$5B', known: true, value: '+$5B' });
+      break;
+    case 'exchange': {
+      // Try to recover a matching held asset from the other country
+      const other = state.countries[asset.fromCountry];
+      if (other?.heldAssets) {
+        const match = other.heldAssets.findIndex((a) => a.fromCountry === fromCode);
+        if (match !== -1) {
+          other.heldAssets.splice(match, 1);
+          effects.push({ description: 'Your held asset returned in exchange', known: true });
+        } else {
+          effects.push({ description: 'No matching asset to exchange — goodwill bonus instead', known: true });
+          from.diplomaticInfluence = clamp(from.diplomaticInfluence + 8, 0, 100);
+        }
+      }
+      break;
+    }
+    case 'goodwill':
+      from.diplomaticInfluence = clamp(from.diplomaticInfluence + 12, 0, 100);
+      effects.push({ description: 'Diplomatic influence +12', known: true, value: '+12' });
+      break;
+  }
+
+  addEvent(state, 'diplomatic_incident',
+    `${asset.assetType} released to ${asset.fromCountry}`,
+    `${fromCode} has released the ${asset.assetType} to ${asset.fromCountry} (terms: ${action.terms}).`,
+    'medium', [fromCode, asset.fromCountry]);
+
+  return { success: true, action, message: `${asset.assetType} released (${action.terms})`, effects };
 }

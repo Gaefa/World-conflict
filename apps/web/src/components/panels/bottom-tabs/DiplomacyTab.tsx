@@ -135,23 +135,22 @@ export function DiplomacyTab({ country, canAct, onAction, targetCountryCode, pla
             {/* YOU OFFER */}
             <div>
               <h5 className="text-xs font-bold text-accent-green mb-2">{t.diplo_you_offer}</h5>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                 {tradeableResources.map(({ resource, label }) => {
                   const bal = rs[resource];
-                  const surplus = bal ? bal.production - bal.consumption : 0;
-                  if (surplus <= 0) return null;
+                  const surplus = bal ? bal.production - bal.consumption - (bal.exported ?? 0) : 0;
                   return (
-                    <div key={resource} className="flex items-center justify-between bg-bg-card rounded px-2 py-1">
-                      <span className="text-text-secondary text-xs">{label}</span>
-                      <span className="text-text-muted text-[10px]">+{surplus.toFixed(1)}</span>
+                    <div key={resource} className="flex items-center gap-1 bg-bg-card rounded px-2 py-0.5">
+                      <span className="text-text-secondary text-xs flex-1 truncate">{label}</span>
+                      {surplus > 0
+                        ? <span className="text-accent-green text-[10px] font-mono shrink-0">+{surplus.toFixed(0)}</span>
+                        : <span className="text-text-muted text-[10px] shrink-0">—</span>
+                      }
                       <input
-                        type="number"
-                        min={0}
-                        max={Math.floor(surplus)}
-                        step={1}
+                        type="number" min={0} step={1}
                         value={tradeOffers[resource] ?? 0}
                         onChange={e => setTradeOffers(prev => ({ ...prev, [resource]: Math.max(0, Number(e.target.value)) }))}
-                        className="w-12 bg-bg-primary border border-border-default rounded px-1 py-0.5 text-xs text-text-primary font-mono text-right"
+                        className="w-12 bg-bg-primary border border-border-default rounded px-1 py-0.5 text-xs text-text-primary font-mono text-right shrink-0"
                       />
                     </div>
                   );
@@ -161,22 +160,22 @@ export function DiplomacyTab({ country, canAct, onAction, targetCountryCode, pla
             {/* YOU REQUEST */}
             <div>
               <h5 className="text-xs font-bold text-severity-high mb-2">{t.diplo_you_request}</h5>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                 {tradeableResources.map(({ resource, label }) => {
                   const bal = rs[resource];
                   const deficit = bal ? bal.deficit : 0;
-                  if (deficit <= 0) return null;
                   return (
-                    <div key={resource} className="flex items-center justify-between bg-bg-card rounded px-2 py-1">
-                      <span className="text-text-secondary text-xs">{label}</span>
-                      <span className="text-text-muted text-[10px]">-{deficit.toFixed(1)}</span>
+                    <div key={resource} className="flex items-center gap-1 bg-bg-card rounded px-2 py-0.5">
+                      <span className="text-text-secondary text-xs flex-1 truncate">{label}</span>
+                      {deficit > 0
+                        ? <span className="text-severity-high text-[10px] font-mono shrink-0">-{deficit.toFixed(0)}</span>
+                        : <span className="text-text-muted text-[10px] shrink-0">—</span>
+                      }
                       <input
-                        type="number"
-                        min={0}
-                        step={1}
+                        type="number" min={0} step={1}
                         value={tradeRequests[resource] ?? 0}
                         onChange={e => setTradeRequests(prev => ({ ...prev, [resource]: Math.max(0, Number(e.target.value)) }))}
-                        className="w-12 bg-bg-primary border border-border-default rounded px-1 py-0.5 text-xs text-text-primary font-mono text-right"
+                        className="w-12 bg-bg-primary border border-border-default rounded px-1 py-0.5 text-xs text-text-primary font-mono text-right shrink-0"
                       />
                     </div>
                   );

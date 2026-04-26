@@ -51,7 +51,7 @@ function getRevealsLabel(t: Translations, reveals: string): string {
 
 export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, playerCountryCode }: TabProps) {
   const { t } = useLocaleStore();
-  const [intelSub, setIntelSub] = useState<'overview' | 'dossiers' | 'ops' | 'covert'>('overview');
+  const [intelSub, setIntelSub] = useState<'overview' | 'dossiers' | 'ops' | 'covert' | 'assets'>('overview');
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
   const intel = country.intel;
 
@@ -59,11 +59,14 @@ export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, 
     if (canAct && onAction) onAction(action);
   };
 
+  const heldCount = country.heldAssets?.length ?? 0;
+
   const subTabs = [
     { key: 'overview' as const, label: t.intel_sub_overview },
     { key: 'dossiers' as const, label: t.intel_sub_dossiers },
     { key: 'ops' as const, label: t.intel_sub_ops },
     { key: 'covert' as const, label: t.intel_sub_covert },
+    { key: 'assets' as const, label: `${t.intel_sub_assets}${heldCount > 0 ? ` (${heldCount})` : ''}` },
   ];
 
   return (
@@ -81,6 +84,7 @@ export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, 
       {intelSub === 'dossiers' && <IntelDossiersSub country={country} intel={intel} />}
       {intelSub === 'ops' && <IntelOpsSub country={country} intel={intel} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} />}
       {intelSub === 'covert' && <IntelCovertSub country={country} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} />}
+      {intelSub === 'assets' && <IntelAssetsSub country={country} canAct={canAct} act={act} />}
     </div>
   );
 }
@@ -270,6 +274,73 @@ function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode
   );
 }
 
+function IntelAssetsSub({ country, canAct, act }: {
+  country: CountryState; canAct: boolean; act: (a: PlayerAction) => void;
+}) {
+  const { t } = useLocaleStore();
+  const held = country.heldAssets ?? [];
+
+  const assetTypeLabel = (type: string): string => {
+    const map: Record<string, string> = {
+      diplomat: t.intel_asset_type_diplomat,
+      scientist: t.intel_asset_type_scientist,
+      general: t.intel_asset_type_general,
+      president: t.intel_asset_type_president,
+    };
+    return map[type] ?? type;
+  };
+
+  if (held.length === 0) {
+    return (
+      <div className="text-text-muted text-sm py-4 text-center">
+        {t.intel_no_held_assets}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.intel_held_assets_header}</h4>
+      <div className="space-y-2">
+        {held.map(asset => (
+          <div key={asset.id} className="bg-bg-card border border-severity-high/30 rounded p-2.5">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <span className="text-text-primary text-sm font-bold">{assetTypeLabel(asset.assetType)}</span>
+                <span className="text-text-muted text-xs ml-2">← {asset.fromCountry}</span>
+              </div>
+              <span className="text-text-muted text-xs">{t.intel_captured_tick_fmt.replace('{tick}', String(asset.capturedAtTick))}</span>
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                disabled={!canAct}
+                onClick={() => act({ type: 'release_asset', assetId: asset.id, terms: 'ransom' })}
+                className="flex-1 text-xs py-1 rounded border border-accent-amber/50 text-accent-amber bg-accent-amber/10 hover:bg-accent-amber/20 disabled:opacity-40 transition-colors"
+              >
+                {t.intel_release_ransom}
+              </button>
+              <button
+                disabled={!canAct}
+                onClick={() => act({ type: 'release_asset', assetId: asset.id, terms: 'exchange' })}
+                className="flex-1 text-xs py-1 rounded border border-accent-blue/50 text-accent-blue bg-accent-blue/10 hover:bg-accent-blue/20 disabled:opacity-40 transition-colors"
+              >
+                {t.intel_release_exchange}
+              </button>
+              <button
+                disabled={!canAct}
+                onClick={() => act({ type: 'release_asset', assetId: asset.id, terms: 'goodwill' })}
+                className="flex-1 text-xs py-1 rounded border border-accent-green/50 text-accent-green bg-accent-green/10 hover:bg-accent-green/20 disabled:opacity-40 transition-colors"
+              >
+                {t.intel_release_goodwill}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: {
   country: CountryState; canAct: boolean; act: (a: PlayerAction) => void; hasTarget: boolean; targetCountryCode?: string | null;
 }) {
@@ -312,6 +383,15 @@ function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode }: 
           <ActionBtn label={t.intel_false_flag} cost={t.intel_false_flag_cost} effect={t.intel_false_flag_eff}
             disabled={!canAct || !hasTarget || country.economy.budget < 12 || country.diplomaticInfluence < 8}
             onClick={() => act({ type: 'false_flag', targetCountry: targetCountryCode!, framedCountry: 'RU', operation: 'terrorist_attack' })} />
+          <div className="mt-2 border-t border-border-default pt-2">
+            <h5 className="text-xs font-bold uppercase text-severity-high mb-1">{t.intel_abduct_header}</h5>
+            <ActionBtn label={t.intel_abduct_diplomat} cost={t.intel_abduct_diplomat_cost} effect={t.intel_abduct_diplomat_eff}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('intel_2')}
+              onClick={() => act({ type: 'abduct_asset', targetCountry: targetCountryCode!, assetType: 'diplomat' })} />
+            <ActionBtn label={t.intel_abduct_president} cost={t.intel_abduct_president_cost} effect={t.intel_abduct_president_eff}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('intel_3')}
+              onClick={() => act({ type: 'abduct_asset', targetCountry: targetCountryCode!, assetType: 'president' })} />
+          </div>
         </div>
       </div>
     </div>
