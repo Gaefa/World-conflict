@@ -252,6 +252,8 @@ export default function Home() {
         )}
         relations={gameState?.relations}
         currentTick={currentTick}
+        armies={gameState?.armies}
+        allCountries={gameState?.countries}
       />
 
       {/* Leaderboard (top-right corner during active game) */}

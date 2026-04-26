@@ -1,6 +1,6 @@
 'use client';
 
-import type { CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import type { CountryState, PlayerAction, DiplomaticRelation, Army } from '@conflict-game/shared-types';
 import type { Translations } from '@/lib/i18n/types';
 
 export const TAB_KEYS = ['Economy', 'Military', 'Diplomacy', 'Intelligence', 'Research', 'Domestic'] as const;
@@ -27,6 +27,10 @@ export interface TabProps {
   hasSanctions?: boolean;
   relations?: DiplomaticRelation[];
   currentTick?: number;
+  /** All armies in the session (for military map) */
+  armies?: Army[];
+  /** Full countries record (for map coloring) */
+  allCountries?: Record<string, CountryState>;
 }
 
 // ── Stat helpers ──

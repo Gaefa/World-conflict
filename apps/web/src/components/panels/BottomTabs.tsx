@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import type { CountryState, PlayerAction, DiplomaticRelation, Army } from '@conflict-game/shared-types';
 import { useLocaleStore } from '@/stores/localeStore';
 import { TAB_KEYS, getTabLabel, type Tab, type TabProps } from './bottom-tabs/_shared';
 import { EconomyTab } from './bottom-tabs/EconomyTab';
@@ -28,6 +28,10 @@ interface BottomTabsProps {
   relations?: DiplomaticRelation[];
   /** Current game tick */
   currentTick?: number;
+  /** All armies in the session */
+  armies?: Army[];
+  /** Full countries record for map coloring */
+  allCountries?: Record<string, CountryState>;
 }
 
 export function BottomTabs({
@@ -41,6 +45,8 @@ export function BottomTabs({
   hasSanctions,
   relations,
   currentTick,
+  armies,
+  allCountries,
 }: BottomTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const { t } = useLocaleStore();
@@ -85,6 +91,8 @@ export function BottomTabs({
                   hasSanctions={hasSanctions}
                   relations={relations}
                   currentTick={currentTick}
+                  armies={armies}
+                  allCountries={allCountries}
                 />
               )
             ) : (
