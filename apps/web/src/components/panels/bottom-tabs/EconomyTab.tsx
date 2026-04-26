@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { DiplomaticRelation, TradeFlow } from '@conflict-game/shared-types';
 import type { CountryState, PlayerAction, ResourceType, ResourceBalance } from '@conflict-game/shared-types';
 import { useLocaleStore } from '@/stores/localeStore';
 import type { Translations } from '@/lib/i18n/types';
@@ -22,7 +23,7 @@ function getResourceCategories(t: Translations): { label: string; icon: string; 
   ];
 }
 
-export function EconomyTab({ country, canAct, onAction, hasSanctions }: TabProps) {
+export function EconomyTab({ country, canAct, onAction, hasSanctions, playerCountryCode, relations }: TabProps) {
   const { t } = useLocaleStore();
   const e = country.economy;
   const [subTab, setSubTab] = useState<'overview' | 'resources' | 'policy'>('overview');
@@ -71,17 +72,32 @@ export function EconomyTab({ country, canAct, onAction, hasSanctions }: TabProps
         ))}
       </div>
 
-      {subTab === 'overview' && <EconOverviewSub country={country} />}
+      {subTab === 'overview' && <EconOverviewSub country={country} playerCountryCode={playerCountryCode} relations={relations} />}
       {subTab === 'resources' && <EconResourcesSub country={country} canAct={canAct} act={act} />}
       {subTab === 'policy' && <EconPolicySub country={country} canAct={canAct} act={act} hasSanctions={hasSanctions} />}
     </div>
   );
 }
 
-function EconOverviewSub({ country }: { country: CountryState }) {
+function EconOverviewSub({
+  country,
+  playerCountryCode,
+  relations,
+}: {
+  country: CountryState;
+  playerCountryCode?: string | null;
+  relations?: DiplomaticRelation[];
+}) {
   const { t } = useLocaleStore();
   const e = country.economy;
   const rs = country.resourceState ?? {};
+
+  // Active trade agreements for this player
+  const tradeAgreements = relations?.filter(
+    r => r.type === 'trade_agreement' && r.status === 'active' &&
+      playerCountryCode &&
+      (r.fromCountry === playerCountryCode || r.toCountry === playerCountryCode)
+  ) ?? [];
 
   // Find top deficits
   const deficits = Object.entries(rs)
@@ -142,6 +158,46 @@ function EconOverviewSub({ country }: { country: CountryState }) {
           })
         )}
       </div>
+      {tradeAgreements.length > 0 && (
+        <div className="col-span-3 mt-3 border-t border-border-default pt-3">
+          <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">🤝 {t.econ_trade_partners}</h4>
+          <div className="space-y-1">
+            {tradeAgreements.map(rel => {
+              const partner = rel.fromCountry === playerCountryCode ? rel.toCountry : rel.fromCountry;
+              const flows: TradeFlow[] = (rel as unknown as { tradeFlows?: TradeFlow[] }).tradeFlows ?? [];
+              const outgoing = flows.filter(f =>
+                (f.direction === 'from_to' && rel.fromCountry === playerCountryCode) ||
+                (f.direction === 'to_from' && rel.toCountry === playerCountryCode)
+              );
+              const incoming = flows.filter(f =>
+                (f.direction === 'from_to' && rel.toCountry === playerCountryCode) ||
+                (f.direction === 'to_from' && rel.fromCountry === playerCountryCode)
+              );
+              return (
+                <div key={rel.id} className="flex items-start gap-3 bg-bg-card border border-border-default rounded px-2 py-1.5 text-xs">
+                  <span className="text-text-secondary font-bold shrink-0 w-8">{partner}</span>
+                  <div className="flex-1 min-w-0">
+                    {outgoing.length > 0 && (
+                      <div className="text-amber-400">
+                        → {outgoing.map(f => `${getResourceLabel(t, f.resource)} ×${f.amountPerTick}/mo`).join(', ')}
+                      </div>
+                    )}
+                    {incoming.length > 0 && (
+                      <div className="text-accent-green">
+                        ← {incoming.map(f => `${getResourceLabel(t, f.resource)} ×${f.amountPerTick}/mo`).join(', ')}
+                      </div>
+                    )}
+                    {flows.length === 0 && <span className="text-text-muted">{t.diplo_general_trade}</span>}
+                  </div>
+                  {rel.expiresAtTick !== undefined && (
+                    <span className="text-text-muted shrink-0">{t.econ_trade_expires} {rel.expiresAtTick}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

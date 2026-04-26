@@ -23,6 +23,7 @@ import {
   processProposeAlliance,
   processProposeSanction,
   processProposeTrade,
+  processCounterTrade,
   processProposePeace,
   processProposalResponse,
 } from './actions/diplomacy';
@@ -146,7 +147,7 @@ export function processAction(
     case 'manipulate_price':
       return processManipulatePrice(state, country, playerCountryCode, action);
     case 'counter_trade':
-      return fail(action, 'Counter trade not yet implemented');
+      return processCounterTrade(state, playerCountryCode, action);
 
     // Intelligence (v0.3)
     case 'launch_spy_op':

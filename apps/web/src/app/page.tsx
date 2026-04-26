@@ -8,6 +8,7 @@ import { CountryPanel } from '@/components/panels/CountryPanel';
 import { BottomTabs } from '@/components/panels/BottomTabs';
 import { CreateSessionModal } from '@/components/ui/CreateSessionModal';
 import { SaveLoadModal } from '@/components/ui/SaveLoadModal';
+import { PriceTicker } from '@/components/ui/PriceTicker';
 import { ActionToast } from '@/components/ui/ActionToast';
 import { LocalePicker } from '@/components/ui/LocalePicker';
 import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
@@ -229,6 +230,10 @@ export default function Home() {
 
         <CountryPanel country={selectedCountryStats} />
       </main>
+
+      {gameState?.resourceMarket && Object.keys(gameState.resourceMarket.prices).length > 0 && (
+        <PriceTicker market={gameState.resourceMarket} />
+      )}
 
       <BottomTabs
         country={bottomTabsCountry}

@@ -51,7 +51,8 @@ const BASE_CONSUMPTION: Record<string, number> = {
 };
 
 /** Market base prices ($/unit, base=100) */
-const BASE_PRICES: Record<string, number> = {
+/** Baseline market prices used for trend indicators and initial market seeding. */
+export const BASE_PRICES: Record<string, number> = {
   oil: 100, gas: 80, coal: 50,
   iron: 60, copper: 70, aluminum: 65, titanium: 120,
   gold: 150, silver: 80, palladium: 140, platinum: 160,

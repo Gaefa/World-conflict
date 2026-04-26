@@ -234,6 +234,65 @@ export function processProposePeace(
   };
 }
 
+/**
+ * Counter-trade: the target of a pending trade proposal modifies the terms.
+ * This replaces the tradeFlows on the pending relation and leaves it in
+ * 'pending' state so the original proposer (or AI logic) can accept/reject
+ * the new terms on the next tick.
+ */
+export function processCounterTrade(
+  state: GameState,
+  playerCode: string,
+  action: PlayerAction,
+): ActionResult {
+  const a = action as { relationId: string; offers?: any[]; requests?: any[] };
+  const relation = state.relations.find(r => r.id === a.relationId && r.type === 'trade_agreement');
+  if (!relation) return fail(action, 'Trade proposal not found');
+  if (relation.status !== 'proposed') return fail(action, 'Trade proposal is no longer pending');
+
+  // Only the target (toCountry) may counter. From the engine's perspective
+  // we swap direction: the counter-proposer becomes the new fromCountry.
+  const isTarget = relation.toCountry === playerCode;
+  const isProposer = relation.fromCountry === playerCode;
+  if (!isTarget && !isProposer) return fail(action, 'You are not party to this trade proposal');
+
+  const tradeFlows: any[] = [];
+  if (a.offers) {
+    for (const offer of a.offers) {
+      tradeFlows.push({
+        resource: offer.resource,
+        amountPerTick: offer.amount,
+        // offers from counter-proposer are always from_to relative to them
+        direction: (playerCode === relation.fromCountry ? 'from_to' : 'to_from') as 'from_to' | 'to_from',
+        priceModifier: offer.priceModifier ?? 1.0,
+      });
+    }
+  }
+  if (a.requests) {
+    for (const req of a.requests) {
+      tradeFlows.push({
+        resource: req.resource,
+        amountPerTick: req.amount,
+        direction: (playerCode === relation.fromCountry ? 'to_from' : 'from_to') as 'from_to' | 'to_from',
+        priceModifier: req.priceModifier ?? 1.0,
+      });
+    }
+  }
+
+  // Update flows; keep 'proposed' so the other party (AI or human) can respond.
+  (relation as any).tradeFlows = tradeFlows;
+
+  const desc = tradeFlows.map((f: any) => `${f.resource} ×${f.amountPerTick}/mo`).join(', ');
+  return {
+    success: true, action,
+    message: `Counter-trade sent to ${playerCode === relation.fromCountry ? relation.toCountry : relation.fromCountry}: ${desc}`,
+    effects: [
+      { description: `New terms: ${desc}`, known: true },
+      { description: 'Awaiting response', known: true },
+    ],
+  };
+}
+
 export function processProposalResponse(
   state: GameState,
   action: PlayerAction & { type: 'accept_proposal' | 'reject_proposal' },

@@ -115,6 +115,9 @@ export interface Translations {
   econ_tbl_deficit: string;
   econ_tbl_stock: string;
   econ_processing_caps: string;
+  econ_trade_partners: string;
+  econ_trade_expires: string;
+  diplo_general_trade: string;
   econ_policy_header: string;
   econ_policy_invest: string;
   econ_policy_invest_eff: string;
