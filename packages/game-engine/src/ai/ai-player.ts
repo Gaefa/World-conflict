@@ -1,4 +1,5 @@
 import type { GameState, CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { RNG } from '@conflict-game/game-logic';
 
 // ─── AI Strategy Types ───────────────────────────────────────────────
@@ -270,13 +271,14 @@ function computeMilitaryActions(
 
   // Build army if military-focused
   if (p.aggression > 0.5 && rng() < 0.2 * diff) {
+    const homeSeed = SEED_COUNTRIES.find(c => c.code === aiState.countryCode);
     actions.push({
       type: 'create_army',
       armyType: 'infantry',
       name: `${aiState.countryCode}-force-${Date.now()}`,
       size: Math.floor(10000 * diff),
-      latitude: 0,
-      longitude: 0,
+      latitude: homeSeed?.latitude ?? 0,
+      longitude: homeSeed?.longitude ?? 0,
     });
   }
 

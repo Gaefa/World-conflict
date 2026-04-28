@@ -1,22 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import type { CountryState, PlayerAction } from '@conflict-game/shared-types';
+import type { CountryState, PlayerAction, SpyOpType } from '@conflict-game/shared-types';
+import { SPY_OP_CONFIG } from '@conflict-game/shared-types';
 import { useLocaleStore } from '@/stores/localeStore';
 import type { Translations } from '@/lib/i18n/types';
 import { StatCard, Bar, ActionBtn, type TabProps } from './_shared';
 
-// Intel constants inlined to avoid Turbopack .js extension resolution issues with shared-types
-type SpyOpKey = 'humint' | 'sigint' | 'satellite' | 'cyber_espionage' | 'diplomatic_probe';
 type IntelLevelKey = 'none' | 'low' | 'medium' | 'high' | 'full';
-
-const SPY_OP_CONFIG_UI: Record<SpyOpKey, { cost: number; baseDuration: number; detectionRisk: number; reveals: string; techRequired: number; intelGain: number }> = {
-  humint:           { cost: 8,  baseDuration: 6, detectionRisk: 0.12, reveals: 'military',  techRequired: 1, intelGain: 5 },
-  sigint:           { cost: 12, baseDuration: 4, detectionRisk: 0.08, reveals: 'economy',   techRequired: 5, intelGain: 8 },
-  satellite:        { cost: 15, baseDuration: 3, detectionRisk: 0.05, reveals: 'resources', techRequired: 6, intelGain: 6 },
-  cyber_espionage:  { cost: 10, baseDuration: 5, detectionRisk: 0.15, reveals: 'stability', techRequired: 7, intelGain: 10 },
-  diplomatic_probe: { cost: 3,  baseDuration: 2, detectionRisk: 0.03, reveals: 'diplomacy', techRequired: 1, intelGain: 3 },
-};
 
 const INTEL_THRESHOLDS_UI: Record<IntelLevelKey, number> = { none: 0, low: 25, medium: 60, high: 120, full: 200 };
 
@@ -28,11 +19,11 @@ const INTEL_LEVEL_COLORS: Record<IntelLevelKey, string> = {
   full: 'text-accent-blue',
 };
 
-function getSpyOpLabels(t: Translations): Record<SpyOpKey, string> {
+function getSpyOpLabels(t: Translations): Record<SpyOpType, string> {
   return {
-    humint: t.intel_op_humint,
-    sigint: t.intel_op_sigint,
-    satellite: t.intel_op_satellite,
+    human_intel: t.intel_op_humint,
+    signal_intel: t.intel_op_sigint,
+    satellite_recon: t.intel_op_satellite,
     cyber_espionage: t.intel_op_cyber,
     diplomatic_probe: t.intel_op_probe,
   };
@@ -81,7 +72,7 @@ export function IntelligenceTab({ country, canAct, onAction, targetCountryCode, 
       </div>
 
       {intelSub === 'overview' && <IntelOverviewSub country={country} intel={intel} canAct={canAct} act={act} />}
-      {intelSub === 'dossiers' && <IntelDossiersSub country={country} intel={intel} />}
+      {intelSub === 'dossiers' && <IntelDossiersSub intel={intel} />}
       {intelSub === 'ops' && <IntelOpsSub country={country} intel={intel} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} />}
       {intelSub === 'covert' && <IntelCovertSub country={country} canAct={canAct} act={act} hasTarget={!!hasTarget} targetCountryCode={targetCountryCode} hasSanctions={hasSanctions} />}
       {intelSub === 'assets' && <IntelAssetsSub country={country} canAct={canAct} act={act} />}
@@ -137,7 +128,7 @@ function IntelOverviewSub({ country, intel, canAct, act }: { country: CountrySta
   );
 }
 
-function IntelDossiersSub({ country, intel }: { country: CountryState; intel: CountryState['intel'] }) {
+function IntelDossiersSub({ intel }: { intel: CountryState['intel'] }) {
   const { t } = useLocaleStore();
   const dossiers = intel?.dossiers ?? {};
   const entries = Object.entries(dossiers);
@@ -189,7 +180,7 @@ function IntelDossiersSub({ country, intel }: { country: CountryState; intel: Co
             </div>
             {dossier.activeOps.length > 0 && (
               <div className="mt-1.5 text-xs text-text-muted">
-                {t.intel_active_ops_label} {dossier.activeOps.map(op => spyOpLabels[op.type as SpyOpKey]).join(', ')}
+                {t.intel_active_ops_label} {dossier.activeOps.map(op => spyOpLabels[op.type as SpyOpType] ?? op.type).join(', ')}
               </div>
             )}
           </div>
@@ -204,10 +195,10 @@ function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode
 }) {
   const { t } = useLocaleStore();
 
-  const spyOps: { key: SpyOpKey; label: string }[] = [
-    { key: 'humint', label: t.intel_op_humint },
-    { key: 'sigint', label: t.intel_op_sigint },
-    { key: 'satellite', label: t.intel_op_satellite },
+  const spyOps: { key: SpyOpType; label: string }[] = [
+    { key: 'human_intel',    label: t.intel_op_humint },
+    { key: 'signal_intel',   label: t.intel_op_sigint },
+    { key: 'satellite_recon', label: t.intel_op_satellite },
     { key: 'cyber_espionage', label: t.intel_op_cyber },
     { key: 'diplomatic_probe', label: t.intel_op_probe },
   ];
@@ -225,7 +216,7 @@ function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode
       </h4>
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         {spyOps.map(({ key, label }) => {
-          const cfg = SPY_OP_CONFIG_UI[key];
+          const cfg = SPY_OP_CONFIG[key];
           const techOk = (country.techLevel ?? 1) >= cfg.techRequired;
           const budgetOk = country.economy.budget >= cfg.cost;
           const effectStr = t.intel_op_effect_fmt
@@ -237,7 +228,7 @@ function IntelOpsSub({ country, intel, canAct, act, hasTarget, targetCountryCode
               cost={`$${cfg.cost}B${cfg.techRequired > 1 ? `, Tech ${cfg.techRequired}+` : ''}`}
               effect={effectStr}
               disabled={!canAct || !hasTarget || !techOk || !budgetOk}
-              onClick={() => act({ type: 'launch_spy_op', targetCountry: targetCountryCode!, opType: key as any })} />
+              onClick={() => act({ type: 'launch_spy_op', targetCountry: targetCountryCode!, opType: key })} />
           );
         })}
       </div>

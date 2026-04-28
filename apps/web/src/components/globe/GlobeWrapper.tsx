@@ -131,7 +131,7 @@ export function GlobeWrapper({
       if (gameCountryCodes.includes(resolved.code)) return 'rgba(70, 85, 110, 0.85)';
       return 'rgba(50, 60, 80, 0.7)';
     },
-    [selectedCountry, highlightedCountries],
+    [selectedCountry, highlightedCountries, gameCountryCodes],
   );
 
   const getPolygonSideColor = useCallback(() => 'rgba(40, 45, 60, 0.6)', []);

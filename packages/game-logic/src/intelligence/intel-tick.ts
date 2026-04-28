@@ -248,13 +248,12 @@ function removeOps(intel: IntelligenceState, ids: string[]): void {
   }
 }
 
-let eventCounter = 0;
 function makeEvent(
   state: GameState, tick: number, type: GameEvent['type'], severity: GameEvent['severity'],
   title: string, involved: string[], data: Record<string, unknown> = {},
 ): GameEvent {
   return {
-    id: `evt-intel-${tick}-${++eventCounter}`,
+    id: `evt-intel-${state.session.id}-${tick}-${type}-${involved.join('_')}-${Date.now()}`,
     sessionId: state.session.id,
     tick, type, severity, title,
     description: title,

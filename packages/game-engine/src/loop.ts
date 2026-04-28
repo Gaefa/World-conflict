@@ -20,7 +20,7 @@ import { createRNG } from '@conflict-game/game-logic';
 import type { RNG } from '@conflict-game/game-logic';
 import type { AIState } from './ai/index';
 import type { GameState } from '@conflict-game/shared-types';
-import { drainActions } from './action-queue';
+import { drainActions, clearSessionQueue } from './action-queue';
 import { runTick, computePlayerDelta } from './tick';
 
 export interface GameStateStore {
@@ -101,6 +101,7 @@ export class GameLoop {
       clearInterval(id);
       this.intervals.delete(sessionId);
       this.sessionRngs.delete(sessionId);
+      clearSessionQueue(sessionId);
       console.log(`[GameLoop] Stopped session ${sessionId}`);
     }
   }

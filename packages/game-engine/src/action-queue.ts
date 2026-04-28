@@ -22,3 +22,7 @@ export function drainActions(sessionId: string): QueuedAction[] {
   return q;
 }
 
+export function clearSessionQueue(sessionId: string): void {
+  queues.delete(sessionId);
+}
+
