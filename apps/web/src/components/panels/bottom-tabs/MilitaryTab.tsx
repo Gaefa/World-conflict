@@ -40,9 +40,9 @@ export function MilitaryTab({
   })();
 
   const milSubTabs = [
-    { key: 'overview' as const, label: '📊 Overview' },
-    { key: 'map' as const, label: '🗺 War Map' },
-    { key: 'ops' as const, label: '⚔️ Ops' },
+    { key: 'overview' as const, label: t.mil_sub_overview },
+    { key: 'map' as const, label: t.mil_sub_warmap },
+    { key: 'ops' as const, label: t.mil_sub_ops },
   ];
 
   return (
@@ -156,7 +156,7 @@ export function MilitaryTab({
             />
           </div>
           <div>
-            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Advanced Ops</h4>
+            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_advanced_ops}</h4>
             <ActionBtn
               label={t.mil_drone_raid}
               cost={t.mil_drone_raid_cost}
@@ -180,18 +180,18 @@ export function MilitaryTab({
             />
           </div>
           <div>
-            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">Logistics</h4>
+            <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_logistics}</h4>
             <ActionBtn
-              label="Build Stockpile (3mo)"
-              cost="Varies"
-              effect={`Reserve ${topDeficitResource} ×3 months`}
+              label={t.econ_build_stockpile_3}
+              cost={t.econ_cost_varies}
+              effect={t.econ_reserves_3}
               disabled={!canAct || country.economy.budget < 5}
               onClick={() => act({ type: 'build_stockpile', resource: topDeficitResource, months: 3 })}
             />
             <ActionBtn
-              label="Build Stockpile (6mo)"
-              cost="Varies"
-              effect={`Reserve ${topDeficitResource} ×6 months`}
+              label={t.econ_build_stockpile_6}
+              cost={t.econ_cost_varies}
+              effect={t.econ_reserves_6}
               disabled={!canAct || country.economy.budget < 10}
               onClick={() => act({ type: 'build_stockpile', resource: topDeficitResource, months: 6 })}
             />

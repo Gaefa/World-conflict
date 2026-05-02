@@ -188,6 +188,19 @@ export const ru: Translations = {
   rlabel_weaponsComponents: 'Вооружение',
   rlabel_pharmaceuticals: 'Фармац.',
 
+  // Военные вкладки и карта войны
+  mil_sub_overview: '📊 Обзор',
+  mil_sub_warmap: '🗺 Карта войны',
+  mil_sub_ops: '⚔️ Операции',
+  mil_section_advanced_ops: 'Спецоперации',
+  mil_section_logistics: 'Логистика',
+  warmap_you: 'Вы',
+  warmap_war: 'Война',
+  warmap_allied: 'Союзник',
+  warmap_sanctioned: 'Санкции',
+  warmap_units_legend: '▲ пехота  ■ броня  + авиация  ● флот  ✱ спецназ',
+  warmap_click_move: '⚡ Нажмите на карту для перемещения',
+
   // Military tab
   mil_stat_army: 'Сухопутные',
   mil_stat_army_sub: 'Личный состав',

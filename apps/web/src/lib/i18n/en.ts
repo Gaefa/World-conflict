@@ -188,6 +188,19 @@ export const en: Translations = {
   rlabel_weaponsComponents: 'Weapons',
   rlabel_pharmaceuticals: 'Pharma',
 
+  // Military sub-tabs & WarMap
+  mil_sub_overview: '📊 Overview',
+  mil_sub_warmap: '🗺 War Map',
+  mil_sub_ops: '⚔️ Ops',
+  mil_section_advanced_ops: 'Advanced Ops',
+  mil_section_logistics: 'Logistics',
+  warmap_you: 'You',
+  warmap_war: 'War',
+  warmap_allied: 'Allied',
+  warmap_sanctioned: 'Sanctioned',
+  warmap_units_legend: '▲ infantry  ■ armor  + air  ● naval  ✱ SOF',
+  warmap_click_move: '⚡ Click map to move unit',
+
   // Military tab
   mil_stat_army: 'Army',
   mil_stat_army_sub: 'Personnel',

@@ -11,8 +11,11 @@ export function processEconomyTick(country: CountryState): Partial<CountryEconom
   const newGdp = economy.gdp * (1 + growthRate * stabilityFactor * shockFactor);
 
   // Tax revenue (per month): GDP is in $B, taxRate is 0-1, /12 for monthly
-  // Only ~5% of total revenue goes to discretionary budget pool for player actions
-  const taxRevenue = newGdp * economy.taxRate / 12 * 0.05; // $B per month
+  // 20% of monthly tax revenue goes to the discretionary budget pool.
+  // Old value was 5% which made mid-size economies (Russia, India) run out of
+  // budget after 1-2 actions — not fun. 20% gives ~$7.5B/tick for Russia,
+  // ~$104B/tick for USA, which matches the action cost scale.
+  const taxRevenue = newGdp * economy.taxRate / 12 * 0.20; // $B per month
 
   // Budget update
   const newBudget = economy.budget + taxRevenue;

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { feature } from 'topojson-client';
 import type { Topology } from 'topojson-specification';
 import type { Army, ArmyType, CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import { useLocaleStore } from '@/stores/localeStore';
 
 // ── Projection ───────────────────────────────────────────────────────────────
 const W = 960;
@@ -142,6 +143,7 @@ export interface WarMapProps {
 }
 
 export function WarMap({ armies, relations, allCountries, playerCountryCode, onAction }: WarMapProps) {
+  const { t } = useLocaleStore();
   const [geoFeatures, setGeoFeatures] = useState<GeoFeature[]>([]);
   const [selectedArmyId, setSelectedArmyId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -181,23 +183,23 @@ export function WarMap({ armies, relations, allCountries, playerCountryCode, onA
       {/* Legend */}
       <div className="flex gap-3 flex-wrap text-[10px] text-text-muted items-center">
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(29,78,216,0.65)' }} /> You
+          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(29,78,216,0.65)' }} /> {t.warmap_you}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(185,28,28,0.65)' }} /> War
+          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(185,28,28,0.65)' }} /> {t.warmap_war}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(21,128,61,0.55)' }} /> Allied
+          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(21,128,61,0.55)' }} /> {t.warmap_allied}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(180,83,9,0.55)' }} /> Sanctioned
+          <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'rgba(180,83,9,0.55)' }} /> {t.warmap_sanctioned}
         </span>
         <span className="flex items-center gap-1 ml-2 text-[10px]">
-          ▲ infantry &nbsp; ■ armor &nbsp; + air &nbsp; ● naval &nbsp; ✱ SOF
+          {t.warmap_units_legend}
         </span>
         {selectedArmyId && (
           <span className="ml-auto text-accent-amber font-bold text-[11px] animate-pulse">
-            ⚡ Click map to move unit
+            {t.warmap_click_move}
           </span>
         )}
       </div>

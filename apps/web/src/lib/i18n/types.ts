@@ -189,6 +189,19 @@ export interface Translations {
   rlabel_weaponsComponents: string;
   rlabel_pharmaceuticals: string;
 
+  // ── Military sub-tabs & WarMap ──
+  mil_sub_overview: string;
+  mil_sub_warmap: string;
+  mil_sub_ops: string;
+  mil_section_advanced_ops: string;
+  mil_section_logistics: string;
+  warmap_you: string;
+  warmap_war: string;
+  warmap_allied: string;
+  warmap_sanctioned: string;
+  warmap_units_legend: string;
+  warmap_click_move: string;
+
   // ── Military tab ──
   mil_stat_army: string;
   mil_stat_army_sub: string;
