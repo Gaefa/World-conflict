@@ -5,6 +5,7 @@ import type { PlayerAction, ResourceType } from '@conflict-game/shared-types';
 import { WarMap } from '../../military/WarMap';
 import { useLocaleStore } from '@/stores/localeStore';
 import { StatCard, Bar, ActionBtn, formatNum, type TabProps } from './_shared';
+import { scaledCost, costLabel } from '@/lib/actionCosts';
 
 export function MilitaryTab({
   country,
@@ -38,6 +39,17 @@ export function MilitaryTab({
     }
     return best;
   })();
+
+  const gdp = country.economy.gdp;
+  // Costs scaled to country GDP (same formula as server-side scaledCost)
+  const c = {
+    recruit:   scaledCost(5,  gdp),
+    rnd:       scaledCost(10, gdp),
+    surgical:  scaledCost(2,  gdp),
+    carpet:    scaledCost(20, gdp),
+    naval:     scaledCost(5,  gdp),
+    drone:     scaledCost(3,  gdp),
+  };
 
   const milSubTabs = [
     { key: 'overview' as const, label: t.mil_sub_overview },
@@ -85,16 +97,16 @@ export function MilitaryTab({
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_buildup}</h4>
             <ActionBtn
               label={t.mil_recruit_infantry}
-              cost="$5B"
+              cost={costLabel(5, gdp)}
               effect={t.mil_recruit_infantry_eff}
-              disabled={!canAct || country.economy.budget < 5}
-              onClick={() => act({ type: 'allocate_budget', category: 'military', amount: 5 })}
+              disabled={!canAct || country.economy.budget < c.recruit}
+              onClick={() => act({ type: 'allocate_budget', category: 'military', amount: c.recruit })}
             />
             <ActionBtn
               label={t.mil_rnd}
-              cost="$10B"
+              cost={costLabel(10, gdp)}
               effect={t.mil_rnd_eff}
-              disabled={!canAct || country.economy.budget < 10}
+              disabled={!canAct || country.economy.budget < c.rnd}
               onClick={() => act({ type: 'research_tech', category: 'military' })}
             />
             <ActionBtn
@@ -128,16 +140,16 @@ export function MilitaryTab({
             </h4>
             <ActionBtn
               label={t.mil_surgical}
-              cost={t.mil_surgical_cost}
+              cost={costLabel(2, gdp)}
               effect={t.mil_surgical_eff}
-              disabled={!canAct || !hasTarget || m.airForce < 10 || country.economy.budget < 2}
+              disabled={!canAct || !hasTarget || m.airForce < 10 || country.economy.budget < c.surgical}
               onClick={() => act({ type: 'airstrike', targetCountry: targetCountryCode!, intensity: 'surgical' })}
             />
             <ActionBtn
               label={t.mil_carpet}
-              cost={t.mil_carpet_cost}
+              cost={costLabel(20, gdp)}
               effect={t.mil_carpet_eff}
-              disabled={!canAct || !hasTarget || m.airForce < 50 || country.economy.budget < 20}
+              disabled={!canAct || !hasTarget || m.airForce < 50 || country.economy.budget < c.carpet}
               onClick={() => act({ type: 'airstrike', targetCountry: targetCountryCode!, intensity: 'carpet' })}
             />
             <ActionBtn
@@ -149,9 +161,9 @@ export function MilitaryTab({
             />
             <ActionBtn
               label={t.mil_naval_blockade}
-              cost={t.mil_naval_cost}
+              cost={costLabel(5, gdp)}
               effect={t.mil_naval_eff}
-              disabled={!canAct || !hasTarget || m.navy < 20 || country.economy.budget < 5}
+              disabled={!canAct || !hasTarget || m.navy < 20 || country.economy.budget < c.naval}
               onClick={() => act({ type: 'naval_blockade', targetCountry: targetCountryCode! })}
             />
           </div>
@@ -159,9 +171,9 @@ export function MilitaryTab({
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_advanced_ops}</h4>
             <ActionBtn
               label={t.mil_drone_raid}
-              cost={t.mil_drone_raid_cost}
+              cost={costLabel(3, gdp)}
               effect={t.mil_drone_raid_eff}
-              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('mil_3') || country.economy.budget < 3}
+              disabled={!canAct || !hasTarget || !(country.tech?.researchedTechs ?? []).includes('mil_3') || country.economy.budget < c.drone}
               onClick={() => act({ type: 'drone_raid', targetCountry: targetCountryCode!, target: 'military' })}
             />
             <ActionBtn

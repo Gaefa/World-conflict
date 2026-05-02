@@ -6,7 +6,7 @@ import type {
   CountryState,
 } from '@conflict-game/shared-types';
 import { recruitmentCost, type RNG } from '@conflict-game/game-logic';
-import { addEvent, clamp, fail, isAtWar, makeDipRelation } from './_helpers';
+import { addEvent, clamp, fail, isAtWar, makeDipRelation, scaledCost } from './_helpers';
 
 export function processCreateArmy(
   state: GameState,
@@ -88,13 +88,14 @@ export function processAirstrike(
 
   if (from.military.airForce < 10) return fail(action, 'Insufficient air force');
 
-  const costs: Record<string, { budget: number; planes: number }> = {
+  const baseCosts: Record<string, { budget: number; planes: number }> = {
     surgical: { budget: 2, planes: 5 },
     conventional: { budget: 8, planes: 20 },
     carpet: { budget: 20, planes: 50 },
   };
-  const c = costs[action.intensity];
-  if (from.economy.budget < c.budget) return fail(action, `Need $${c.budget}B budget`);
+  const base = baseCosts[action.intensity];
+  const c = { budget: scaledCost(base.budget, from.economy.gdp), planes: base.planes };
+  if (from.economy.budget < c.budget) return fail(action, `Need $${c.budget.toFixed(1)}B budget`);
   if (from.military.airForce < c.planes) return fail(action, `Need ${c.planes} aircraft`);
 
   from.economy.budget -= c.budget;
@@ -281,8 +282,8 @@ export function processDroneRaid(
   if (!(from.tech?.researchedTechs ?? []).includes('mil_3'))
     return fail(action, 'Drone Warfare technology (mil_3) required');
 
-  const cost = 3;
-  if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
+  const cost = scaledCost(3, from.economy.gdp);
+  if (from.economy.budget < cost) return fail(action, `Need $${cost.toFixed(1)}B budget`);
   from.economy.budget -= cost;
 
   const atWar = isAtWar(state, fromCode, action.targetCountry);
@@ -327,8 +328,8 @@ export function processNavalBlockade(
 
   if (from.military.navy < 20) return fail(action, 'Need at least 20 naval vessels');
 
-  const cost = 5;
-  if (from.economy.budget < cost) return fail(action, `Need $${cost}B budget`);
+  const cost = scaledCost(5, from.economy.gdp);
+  if (from.economy.budget < cost) return fail(action, `Need $${cost.toFixed(1)}B budget`);
 
   from.economy.budget -= cost;
   from.military.navy -= 2; // committed vessels

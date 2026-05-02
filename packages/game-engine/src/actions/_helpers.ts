@@ -59,3 +59,17 @@ export function fail(action: PlayerAction, message: string): ActionResult {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
+
+/** GDP of a "reference" country ($1T). Costs scale relative to this. */
+const REFERENCE_GDP = 1000;
+
+/**
+ * Scale a flat base cost (in $B) proportionally to the acting country's GDP.
+ * Uses sqrt so the curve is gentle: a country 4× richer pays 2× more, not 4×.
+ * Example: base $2B surgical airstrike →
+ *   USA  ($25T): $10B  |  Russia ($2.2T): $3B  |  Ukraine ($160B): $0.8B
+ */
+export function scaledCost(baseCost: number, gdp: number): number {
+  const factor = Math.sqrt(Math.max(0.001, gdp) / REFERENCE_GDP);
+  return Math.max(0.1, Math.round(baseCost * factor * 10) / 10);
+}
