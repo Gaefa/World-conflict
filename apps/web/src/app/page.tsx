@@ -12,6 +12,7 @@ import { PriceTicker } from '@/components/ui/PriceTicker';
 import { ActionToast } from '@/components/ui/ActionToast';
 import { LocalePicker } from '@/components/ui/LocalePicker';
 import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
+import { GoalsPanel } from '@/components/ui/GoalsPanel';
 import { VictoryOverlay } from '@/components/ui/VictoryOverlay';
 import { Leaderboard } from '@/components/panels/Leaderboard';
 import { useGameStore } from '@/stores/gameStore';
@@ -201,6 +202,18 @@ export default function Home() {
                   {t.header_tension_short}: {tensionIndex.toFixed(0)}%
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Goals panel — visible once player has a country */}
+          {gameState?.session.status === 'active' && playerCountryCode && seedCountries && (
+            <div className="absolute bottom-4 left-4 z-20">
+              <GoalsPanel
+                gameState={gameState}
+                playerCountryCode={playerCountryCode}
+                currentTick={currentTick}
+                seedCountries={seedCountries}
+              />
             </div>
           )}
 

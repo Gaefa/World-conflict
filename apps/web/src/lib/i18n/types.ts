@@ -520,6 +520,20 @@ export interface Translations {
   onb_win_body: string;
   onb_win_tip: string;
 
+  // ── Goals panel ──
+  goals_title: string;
+  goals_domination: string;
+  goals_economic: string;
+  goals_diplomatic: string;
+  goals_tech: string;
+  goals_survival: string;
+  goals_first_steps: string;
+  goals_step_country: string;
+  goals_step_research: string;
+  goals_step_trade: string;
+  goals_step_alliance: string;
+  goals_step_stockpile: string;
+
   // ── Event type localized titles ──
   ev_type_war_declared: string;
   ev_type_peace_treaty: string;

@@ -517,6 +517,20 @@ export const ru: Translations = {
   onb_win_body: 'Наука открывает лучшее оружие, экономические бонусы и инструменты шпионажа. Разведка позволяет следить, дестабилизировать и проводить тайные операции. Армия — только когда дипломатия не помогла.',
   onb_win_tip: 'Совет: ставьте игру на паузу (кнопка в шапке) в любой момент, чтобы обдумать следующий ход.',
 
+  // Панель целей
+  goals_title: 'Цели',
+  goals_domination: 'Доминирование',
+  goals_economic: 'Экономика',
+  goals_diplomatic: 'Дипломатия',
+  goals_tech: 'Технологии',
+  goals_survival: 'Выживание',
+  goals_first_steps: 'Первые шаги',
+  goals_step_country: 'Выбрать страну',
+  goals_step_research: 'Начать исследование',
+  goals_step_trade: 'Торговое соглашение',
+  goals_step_alliance: 'Предложить альянс',
+  goals_step_stockpile: 'Создать запас ресурсов',
+
   // Типы событий
   ev_type_war_declared: 'Объявлена война',
   ev_type_peace_treaty: 'Мирный договор',

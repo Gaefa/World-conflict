@@ -516,6 +516,20 @@ export const en: Translations = {
   onb_win_body: 'Research unlocks better weapons, economic boosts and spy tools. Intelligence lets you spy, destabilize and run covert ops. Military — only when diplomacy fails.',
   onb_win_tip: 'Pro tip: pause the game (header button) any time you need to think through your next move.',
 
+  // Goals panel
+  goals_title: 'Goals',
+  goals_domination: 'Domination',
+  goals_economic: 'Economy',
+  goals_diplomatic: 'Diplomacy',
+  goals_tech: 'Technology',
+  goals_survival: 'Survival',
+  goals_first_steps: 'First Steps',
+  goals_step_country: 'Choose your country',
+  goals_step_research: 'Start a research',
+  goals_step_trade: 'Propose a trade deal',
+  goals_step_alliance: 'Propose an alliance',
+  goals_step_stockpile: 'Build a resource stockpile',
+
   // Event type titles
   ev_type_war_declared: 'War Declared',
   ev_type_peace_treaty: 'Peace Treaty',
