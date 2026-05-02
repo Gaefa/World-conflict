@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { PlayerAction, ResourceType } from '@conflict-game/shared-types';
 import { WarMap } from '../../military/WarMap';
 import { useLocaleStore } from '@/stores/localeStore';
@@ -16,11 +16,18 @@ export function MilitaryTab({
   relations,
   armies = [],
   allCountries = {},
+  warCountries,
 }: TabProps) {
   const { t } = useLocaleStore();
   const m = country.military;
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
-  const [subTab, setSubTab] = useState<'overview' | 'map' | 'ops'>('overview');
+  const isAtWar = (warCountries?.size ?? 0) > 0;
+  const [subTab, setSubTab] = useState<'overview' | 'map' | 'ops'>(isAtWar ? 'map' : 'overview');
+
+  // Switch to map when war starts (e.g., mid-session)
+  useEffect(() => {
+    if (isAtWar) setSubTab('map');
+  }, [isAtWar]);
 
   const act = (action: PlayerAction) => {
     if (canAct && onAction) onAction(action);

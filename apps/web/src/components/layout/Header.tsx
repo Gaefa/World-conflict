@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useLocaleStore } from '@/stores/localeStore';
 import { LocaleToggle } from '@/components/ui/LocalePicker';
 import { getVolume, setVolume } from '@/lib/sounds';
+import { TickTimer } from '@/components/ui/TickTimer';
 
 interface HeaderProps {
   activeSessions: number;
@@ -11,6 +12,8 @@ interface HeaderProps {
   currentTick: number;
   isPaused: boolean;
   tensionIndex: number;
+  tickDurationMs?: number;
+  lastTickAt?: number;
   onTogglePause?: () => void;
   canSave?: boolean;
   onSave?: () => void;
@@ -22,6 +25,8 @@ export function Header({
   currentTick,
   isPaused,
   tensionIndex,
+  tickDurationMs = 10_000,
+  lastTickAt = 0,
   onTogglePause,
   canSave,
   onSave,
@@ -88,6 +93,7 @@ export function Header({
         <div className="flex items-center gap-2 bg-bg-card px-3 py-1 rounded border border-border-default">
           <span className="text-text-primary text-sm font-mono">{tickToDate(currentTick, locale ?? 'en')}</span>
           <span className="text-text-muted text-xs">{t.header_tick} {currentTick}</span>
+          <TickTimer tickDurationMs={tickDurationMs} lastTickAt={lastTickAt} isPaused={isPaused} />
         </div>
         <button
           onClick={onTogglePause}

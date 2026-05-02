@@ -77,6 +77,11 @@ export interface Translations {
   bt_click_country_hint: string;
   bt_nonplayable_line1: string;
   bt_nonplayable_line2: string;
+  war_mode_banner: string;
+  war_mode_against: string;
+  war_mode_tip: string;
+  war_mode_more: string;
+  war_mode_less: string;
 
   // ── Economy tab ──
   econ_stat_gdp: string;

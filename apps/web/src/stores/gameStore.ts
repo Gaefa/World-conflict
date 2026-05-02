@@ -18,6 +18,10 @@ interface GameStore {
   currentTick: number;
   tensionIndex: number;
 
+  // Tick timing (for countdown display)
+  tickDurationMs: number;
+  lastTickAt: number;
+
   // UI state
   selectedCountryCode: string | null;
   isPaused: boolean;
@@ -51,6 +55,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   currentTick: 0,
   tensionIndex: 0,
+  tickDurationMs: 10_000,
+  lastTickAt: 0,
   selectedCountryCode: null,
   isPaused: false,
   lastActionResult: null,
@@ -226,6 +232,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameState: newState,
       currentTick: delta.tick,
       tensionIndex: delta.tensionIndex ?? get().tensionIndex,
+      tickDurationMs: delta.tickDurationMs ?? get().tickDurationMs,
+      lastTickAt: delta.tickEmittedAt ?? Date.now(),
     });
   },
 }));

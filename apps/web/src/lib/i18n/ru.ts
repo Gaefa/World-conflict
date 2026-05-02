@@ -76,6 +76,11 @@ export const ru: Translations = {
   bt_click_country_hint: 'Нажмите на страну на глобусе для деталей.',
   bt_nonplayable_line1: 'Неигровая территория',
   bt_nonplayable_line2: 'Начните игру и завоюйте эту территорию, чтобы увидеть подробности.',
+  war_mode_banner: 'РЕЖИМ ВОЙНЫ',
+  war_mode_against: 'В состоянии войны с',
+  war_mode_tip: 'Военная → Карта для боевых приказов',
+  war_mode_more: '••• Ещё',
+  war_mode_less: 'Скрыть',
 
   // Economy tab
   econ_stat_gdp: 'ВВП',

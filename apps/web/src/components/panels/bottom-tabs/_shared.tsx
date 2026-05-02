@@ -4,6 +4,8 @@ import type { CountryState, PlayerAction, DiplomaticRelation, Army } from '@conf
 import type { Translations } from '@/lib/i18n/types';
 
 export const TAB_KEYS = ['Economy', 'Military', 'Diplomacy', 'Intelligence', 'Research', 'Domestic'] as const;
+export const PRIMARY_TABS: Tab[] = ['Economy', 'Military', 'Diplomacy'];
+export const SECONDARY_TABS: Tab[] = ['Intelligence', 'Research', 'Domestic'];
 export type Tab = (typeof TAB_KEYS)[number];
 
 export function getTabLabel(t: Translations, tab: Tab): string {
@@ -31,6 +33,8 @@ export interface TabProps {
   armies?: Army[];
   /** Full countries record (for map coloring) */
   allCountries?: Record<string, CountryState>;
+  /** Country codes the player is currently at war with (for auto war-mode) */
+  warCountries?: Set<string>;
 }
 
 // ── Stat helpers ──

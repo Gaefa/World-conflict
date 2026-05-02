@@ -97,18 +97,26 @@ export function ActionToast() {
         </div>
         {current.effects.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
-            {current.effects.map((e, i) => (
-              <span
-                key={i}
-                className={`text-xs px-1.5 py-0.5 rounded ${
-                  e.known
-                    ? 'bg-bg-card text-text-secondary'
-                    : 'bg-bg-card text-text-muted italic'
-                }`}
-              >
-                {e.known ? e.description : '???'}
-              </span>
-            ))}
+            {current.effects.map((e, i) => {
+              // Highlight casualty comparison rows for invasion
+              const isCasualty = e.known && (
+                e.description.includes('losses:') || e.description.includes('Committed')
+              );
+              return (
+                <span
+                  key={i}
+                  className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                    !e.known
+                      ? 'bg-bg-card text-text-muted italic'
+                      : isCasualty
+                      ? 'bg-severity-high/15 text-severity-high border border-severity-high/30'
+                      : 'bg-bg-card text-text-secondary'
+                  }`}
+                >
+                  {e.known ? e.description : '???'}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>

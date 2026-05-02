@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CountryState, PlayerAction, DiplomaticRelation, Army } from '@conflict-game/shared-types';
 import { useLocaleStore } from '@/stores/localeStore';
-import { TAB_KEYS, getTabLabel, type Tab, type TabProps } from './bottom-tabs/_shared';
+import {
+  PRIMARY_TABS, SECONDARY_TABS, getTabLabel,
+  type Tab, type TabProps,
+} from './bottom-tabs/_shared';
 import { EconomyTab } from './bottom-tabs/EconomyTab';
 import { MilitaryTab } from './bottom-tabs/MilitaryTab';
 import { DiplomacyTab } from './bottom-tabs/DiplomacyTab';
@@ -16,22 +19,15 @@ interface BottomTabsProps {
   isNonPlayable?: boolean;
   countryName?: string;
   onAction?: (action: PlayerAction) => void;
-  /** Country code of the target for diplomacy actions (the currently selected country on globe) */
   targetCountryCode?: string | null;
-  /** The player's own country code */
   playerCountryCode?: string | null;
-  /** Whether a game session is active */
   isGameActive?: boolean;
-  /** Whether this country has active sanctions against it */
   hasSanctions?: boolean;
-  /** All diplomatic relations in the game */
   relations?: DiplomaticRelation[];
-  /** Current game tick */
   currentTick?: number;
-  /** All armies in the session */
   armies?: Army[];
-  /** Full countries record for map coloring */
   allCountries?: Record<string, CountryState>;
+  warCountries?: Set<string>;
 }
 
 export function BottomTabs({
@@ -47,16 +43,59 @@ export function BottomTabs({
   currentTick,
   armies,
   allCountries,
+  warCountries,
 }: BottomTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
+  const [showSecondary, setShowSecondary] = useState(false);
   const { t } = useLocaleStore();
 
-  // Can this player perform actions? Only on their own country during active game
-  const isOwnCountry = playerCountryCode && country?.code === playerCountryCode;
-  const canAct = isGameActive && isOwnCountry && !!onAction;
+  const isAtWar = (warCountries?.size ?? 0) > 0;
+
+  // Auto-open Military tab when war starts
+  useEffect(() => {
+    if (isAtWar && isGameActive) {
+      setActiveTab('Military');
+    }
+  }, [isAtWar, isGameActive]);
+
+  const canAct = isGameActive && playerCountryCode && country?.code === playerCountryCode && !!onAction;
+
+  const warEnemies = warCountries ? [...warCountries].join(', ') : '';
+
+  const tabRow = (tabs: Tab[]) => tabs.map((tab) => (
+    <button
+      key={tab}
+      onClick={() => { setActiveTab(activeTab === tab ? null : tab); setShowSecondary(false); }}
+      className={`text-xs uppercase tracking-wider transition-colors ${
+        activeTab === tab
+          ? 'text-accent-red font-bold'
+          : tab === 'Military' && isAtWar
+          ? 'text-severity-high font-bold animate-pulse'
+          : 'text-text-muted hover:text-text-primary'
+      }`}
+    >
+      {tab === 'Military' && isAtWar ? `⚔ ${getTabLabel(t, tab)}` : getTabLabel(t, tab)}
+    </button>
+  ));
 
   return (
     <>
+      {/* War mode banner */}
+      {isAtWar && isGameActive && (
+        <div className="bg-severity-high/10 border-t border-severity-high/40 px-4 py-1.5 flex items-center gap-3 shrink-0">
+          <span className="text-severity-high font-bold text-xs uppercase tracking-wider animate-pulse">
+            ⚔ {t.war_mode_banner ?? 'WAR MODE'}
+          </span>
+          <span className="text-text-muted text-xs">
+            {t.war_mode_against ?? 'At war with'}: <span className="text-severity-high font-mono">{warEnemies}</span>
+          </span>
+          <span className="ml-auto text-text-muted text-[10px]">
+            {t.war_mode_tip ?? 'Military tab → Map for battle orders'}
+          </span>
+        </div>
+      )}
+
+      {/* Panel content */}
       {activeTab && (
         <div className="h-64 bg-bg-secondary border-t border-border-default animate-slide-up overflow-y-auto">
           <div className="p-4">
@@ -93,32 +132,43 @@ export function BottomTabs({
                   currentTick={currentTick}
                   armies={armies}
                   allCountries={allCountries}
+                  warCountries={warCountries}
                 />
               )
             ) : (
-              <p className="text-text-muted text-sm">
-                {t.bt_click_country_hint}
-              </p>
+              <p className="text-text-muted text-sm">{t.bt_click_country_hint}</p>
             )}
           </div>
         </div>
       )}
 
+      {/* Tab bar — primary tabs + expandable secondary */}
       <div className="h-10 bg-bg-secondary border-t border-border-default flex items-center px-4 shrink-0">
-        <div className="flex gap-4">
-          {TAB_KEYS.map((tab) => (
+        <div className="flex gap-4 items-center">
+          {tabRow(PRIMARY_TABS)}
+
+          {/* Divider */}
+          <span className="text-border-default text-xs select-none">|</span>
+
+          {/* Secondary tabs (collapsed by default) */}
+          {showSecondary ? (
+            <>
+              {tabRow(SECONDARY_TABS)}
+              <button
+                onClick={() => setShowSecondary(false)}
+                className="text-xs text-text-muted hover:text-text-primary"
+              >
+                ‹ {t.war_mode_less ?? 'Less'}
+              </button>
+            </>
+          ) : (
             <button
-              key={tab}
-              onClick={() => setActiveTab(activeTab === tab ? null : tab)}
-              className={`text-xs uppercase tracking-wider transition-colors ${
-                activeTab === tab
-                  ? 'text-accent-red font-bold'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
+              onClick={() => setShowSecondary(true)}
+              className="text-xs text-text-muted hover:text-text-primary tracking-wider"
             >
-              {getTabLabel(t, tab)}
+              {t.war_mode_more ?? '••• More'}
             </button>
-          ))}
+          )}
         </div>
       </div>
     </>

@@ -73,6 +73,10 @@ export interface GameStateDelta {
   tensionIndex?: number;
   removedArmyIds?: string[];
   resourceMarket?: ResourceMarket;
+  /** Current tick interval in ms (adaptive: grows with active wars). */
+  tickDurationMs?: number;
+  /** Server timestamp when this tick was emitted — used for client countdown sync. */
+  tickEmittedAt?: number;
 }
 
 export interface ArmyDelta {

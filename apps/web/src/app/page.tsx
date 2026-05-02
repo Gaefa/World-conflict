@@ -31,6 +31,8 @@ export default function Home() {
     gameState,
     currentTick,
     tensionIndex,
+    tickDurationMs,
+    lastTickAt,
     selectedCountryCode,
     isPaused,
     sessionId,
@@ -194,6 +196,8 @@ export default function Home() {
         currentTick={currentTick}
         isPaused={isPaused}
         tensionIndex={tensionIndex}
+        tickDurationMs={tickDurationMs}
+        lastTickAt={lastTickAt}
         onTogglePause={togglePause}
         canSave={canSave && gameState?.session.status === 'active'}
         onSave={() => setSaveLoadMode('save')}
@@ -294,6 +298,7 @@ export default function Home() {
         currentTick={currentTick}
         armies={gameState?.armies}
         allCountries={gameState?.countries}
+        warCountries={warCountries}
       />
 
       {/* Leaderboard (top-right corner during active game) */}

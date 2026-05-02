@@ -58,9 +58,17 @@ export class InMemoryGameStateStore implements GameStateStore {
   }
 }
 
+/** Compute adaptive tick duration — more active wars = more time per tick (up to 25 s). */
+function computeTickMs(state: GameState, baseMs: number): number {
+  const activeWars = state.relations.filter(r => r.type === 'war' && r.status === 'active').length;
+  return Math.min(baseMs + activeWars * 3_000, 25_000);
+}
+
 export class GameLoop {
   private intervals = new Map<string, ReturnType<typeof setInterval>>();
   private sessionRngs = new Map<string, RNG>();
+  /** Current adaptive tick duration per session (may differ from base). */
+  private sessionTickMs = new Map<string, number>();
   private store: GameStateStore;
   private adapter: GameLoopAdapter;
   private tickIntervalMs: number;
@@ -187,10 +195,25 @@ export class GameLoop {
       this.stop(sessionId);
     }
 
-    // Per-player fog: send each player their fogged view
+    // Adaptive tick: recompute duration based on current war count
+    const newTickMs = computeTickMs(state, this.tickIntervalMs);
+    const prevTickMs = this.sessionTickMs.get(sessionId) ?? this.tickIntervalMs;
+    if (Math.abs(newTickMs - prevTickMs) >= 1_000) {
+      // Duration changed — restart interval with new cadence
+      clearInterval(this.intervals.get(sessionId));
+      const id = setInterval(() => this.tick(sessionId), newTickMs);
+      this.intervals.set(sessionId, id);
+      this.sessionTickMs.set(sessionId, newTickMs);
+    }
+
+    // Per-player fog: send each player their fogged view (include timing info)
+    const tickEmittedAt = Date.now();
+    const currentTickMs = this.sessionTickMs.get(sessionId) ?? this.tickIntervalMs;
     const playerConns = this.adapter.getPlayerConnections(sessionId);
     for (const { playerId, countryCode } of playerConns) {
       const playerDelta = computePlayerDelta(state, countryDeltas, newEvents, countryCode, rng);
+      playerDelta.tickDurationMs = currentTickMs;
+      playerDelta.tickEmittedAt = tickEmittedAt;
       this.adapter.sendToPlayer(playerId, { type: 'state_delta', payload: playerDelta });
     }
   }

@@ -76,6 +76,11 @@ export const en: Translations = {
   bt_click_country_hint: 'Click a country on the globe to view details.',
   bt_nonplayable_line1: 'Non-playable territory',
   bt_nonplayable_line2: 'Start a game session and conquer this territory to see full details.',
+  war_mode_banner: 'WAR MODE',
+  war_mode_against: 'At war with',
+  war_mode_tip: 'Military → Map for battle orders',
+  war_mode_more: '••• More',
+  war_mode_less: 'Less',
 
   // Economy tab
   econ_stat_gdp: 'GDP',
