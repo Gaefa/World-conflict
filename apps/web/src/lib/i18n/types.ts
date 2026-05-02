@@ -459,6 +459,28 @@ export interface Translations {
   toast_ok: string;
   toast_failed: string;
 
+  // ── Action result messages (toast) ──
+  res_airstrike: string;
+  res_invasion_ok: string;
+  res_invasion_fail: string;
+  res_blockade: string;
+  res_drone: string;
+  res_nuclear: string;
+  res_budget_alloc: string;
+  res_research_ok: string;
+  res_research_cancel: string;
+  res_declare_war: string;
+  res_peace: string;
+  res_alliance: string;
+  res_trade_prop: string;
+  res_arms_deal: string;
+  res_sanction: string;
+  res_generic_ok: string;
+  res_generic_fail: string;
+  res_int_surgical: string;
+  res_int_conventional: string;
+  res_int_carpet: string;
+
   // ── Connection ──
   connected: string;
   disconnected: string;

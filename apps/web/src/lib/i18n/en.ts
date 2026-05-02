@@ -455,6 +455,28 @@ export const en: Translations = {
   toast_ok: 'OK',
   toast_failed: 'FAILED',
 
+  // Action result messages
+  res_airstrike: '{intensity} airstrike → {country}',
+  res_invasion_ok: 'Invasion of {country} — success',
+  res_invasion_fail: 'Invasion of {country} repelled',
+  res_blockade: 'Naval blockade — {country}',
+  res_drone: 'Drone raid → {country}',
+  res_nuclear: 'Nuclear strike → {country}',
+  res_budget_alloc: '${amount}B → {category}',
+  res_research_ok: 'Research started',
+  res_research_cancel: 'Research cancelled',
+  res_declare_war: 'War declared → {country}',
+  res_peace: 'Peace proposed → {country}',
+  res_alliance: 'Alliance proposed → {country}',
+  res_trade_prop: 'Trade agreement → {country}',
+  res_arms_deal: 'Arms deal → {country}',
+  res_sanction: 'Sanctions → {country}',
+  res_generic_ok: 'Done',
+  res_generic_fail: 'Failed',
+  res_int_surgical: 'surgical',
+  res_int_conventional: 'conventional',
+  res_int_carpet: 'carpet',
+
   // Connection & misc
   connected: 'Connected',
   disconnected: 'Disconnected',

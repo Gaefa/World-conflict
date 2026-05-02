@@ -92,10 +92,20 @@ interface GeoGeometry { type: 'Polygon' | 'MultiPolygon'; coordinates: number[][
 interface GeoFeature { id?: string | number; type: 'Feature'; geometry: GeoGeometry; properties: Record<string, unknown>; }
 
 function ringPath(ring: number[][]): string {
-  return ring.map(([lng, lat], i) => {
+  if (ring.length === 0) return '';
+  const parts: string[] = [];
+  let prevLng: number | null = null;
+  for (const [lng, lat] of ring) {
     const [x, y] = project(lng, lat);
-    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-  }).join(' ') + ' Z';
+    // Lift the pen at antimeridian crossings (>180° jump) to avoid horizontal artifacts
+    if (prevLng === null || Math.abs(lng - prevLng) > 180) {
+      parts.push(`M ${x.toFixed(1)} ${y.toFixed(1)}`);
+    } else {
+      parts.push(`L ${x.toFixed(1)} ${y.toFixed(1)}`);
+    }
+    prevLng = lng;
+  }
+  return parts.join(' ') + ' Z';
 }
 
 function geometryToPath(geo: GeoGeometry): string {
@@ -213,24 +223,32 @@ export function WarMap({ armies, relations, allCountries, playerCountryCode, onA
           onClick={handleSvgClick}
           className={selectedArmyId ? 'cursor-crosshair' : 'cursor-default'}
         >
+          <defs>
+            <clipPath id="map-clip">
+              <rect width={W} height={H} />
+            </clipPath>
+          </defs>
           <rect width={W} height={H} fill="#0a0f1a" />
 
           {/* Country polygons */}
-          {geoFeatures.map((feat, i) => {
-            const code = featureCode(feat);
-            const path = geometryToPath(feat.geometry);
-            if (!path) return null;
-            const inGame = code ? gameCountryCodes.includes(code) : false;
-            return (
-              <path
-                key={i}
-                d={path}
-                fill={getCountryFill(code, playerCountryCode, relations, inGame)}
-                stroke="#1e2d40"
-                strokeWidth={0.4}
-              />
-            );
-          })}
+          <g clipPath="url(#map-clip)">
+            {geoFeatures.map((feat, i) => {
+              const code = featureCode(feat);
+              const path = geometryToPath(feat.geometry);
+              if (!path) return null;
+              const inGame = code ? gameCountryCodes.includes(code) : false;
+              return (
+                <path
+                  key={i}
+                  d={path}
+                  fill={getCountryFill(code, playerCountryCode, relations, inGame)}
+                  stroke="#1e2d40"
+                  strokeWidth={0.4}
+                  fillRule="evenodd"
+                />
+              );
+            })}
+          </g>
 
           {/* War front lines */}
           {warFronts.map((r) => {

@@ -455,6 +455,28 @@ export const ru: Translations = {
   toast_ok: 'ОК',
   toast_failed: 'ОШИБКА',
 
+  // Результаты действий
+  res_airstrike: '{intensity} авиаудар → {country}',
+  res_invasion_ok: 'Вторжение в {country} — успех',
+  res_invasion_fail: 'Вторжение в {country} — отбито',
+  res_blockade: 'Морская блокада — {country}',
+  res_drone: 'Дроны → {country}',
+  res_nuclear: 'Ядерный удар → {country}',
+  res_budget_alloc: '${amount}B → {category}',
+  res_research_ok: 'Исследование начато',
+  res_research_cancel: 'Исследование отменено',
+  res_declare_war: 'Война объявлена → {country}',
+  res_peace: 'Мирные переговоры → {country}',
+  res_alliance: 'Союз предложен → {country}',
+  res_trade_prop: 'Торговое соглашение → {country}',
+  res_arms_deal: 'Торговля оружием → {country}',
+  res_sanction: 'Санкции → {country}',
+  res_generic_ok: 'Выполнено',
+  res_generic_fail: 'Ошибка',
+  res_int_surgical: 'точечный',
+  res_int_conventional: 'обычный',
+  res_int_carpet: 'ковровый',
+
   // Connection & misc
   connected: 'Подключён',
   disconnected: 'Отключён',
