@@ -14,7 +14,7 @@ export function ActionToast() {
     if (lastActionResult && lastActionResult !== current) {
       setCurrent(lastActionResult);
       setVisible(true);
-      const timer = setTimeout(() => setVisible(false), 4000);
+      const timer = setTimeout(() => setVisible(false), 6000);
       return () => clearTimeout(timer);
     }
   }, [lastActionResult, current]);

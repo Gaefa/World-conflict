@@ -122,6 +122,26 @@ export default function Home() {
 
   const playingCountries = gameState ? Object.keys(gameState.countries) : [];
 
+  // Relation sets for globe coloring
+  const warCountries = new Set(
+    (gameState?.relations ?? [])
+      .filter(r => r.type === 'war' && r.status === 'active' &&
+        (r.fromCountry === playerCountryCode || r.toCountry === playerCountryCode))
+      .map(r => r.fromCountry === playerCountryCode ? r.toCountry : r.fromCountry),
+  );
+  const allyCountries = new Set(
+    (gameState?.relations ?? [])
+      .filter(r => r.type === 'alliance' && r.status === 'active' &&
+        (r.fromCountry === playerCountryCode || r.toCountry === playerCountryCode))
+      .map(r => r.fromCountry === playerCountryCode ? r.toCountry : r.fromCountry),
+  );
+  const sanctionedCountries = new Set(
+    (gameState?.relations ?? [])
+      .filter(r => r.type === 'sanction' && r.status === 'active' &&
+        r.fromCountry === playerCountryCode)
+      .map(r => r.toCountry),
+  );
+
   const countryPoints = seedCountries?.map((c) => {
     const isPlaying = !!gameState?.countries[c.code];
     const isSelected = selectedCountryCode === c.code;
@@ -180,7 +200,10 @@ export default function Home() {
       />
 
       <main className="flex-1 flex overflow-hidden">
-        <EventsFeed events={events} />
+        <EventsFeed
+          events={events}
+          countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
+        />
 
         <div className="flex-1 relative bg-bg-primary">
           <GlobeWrapper
@@ -189,6 +212,10 @@ export default function Home() {
             highlightedCountries={playingCountries}
             countryPoints={countryPoints}
             gameCountryCodes={seedCountries?.map((c) => c.code) || []}
+            isGameActive={gameState?.session.status === 'active'}
+            warCountries={warCountries}
+            allyCountries={allyCountries}
+            sanctionedCountries={sanctionedCountries}
           />
 
           {sessionId && (

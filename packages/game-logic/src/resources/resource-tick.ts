@@ -220,7 +220,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
     if (hasActiveSanctionOrBlockade(state.relations, rel.fromCountry, rel.toCountry)) {
       events.push(makeEvent(state, 'trade_disrupted', 'medium',
         `Trade between ${rel.fromCountry} and ${rel.toCountry} disrupted by sanctions/blockade`,
-        [rel.fromCountry, rel.toCountry]));
+        [rel.fromCountry, rel.toCountry],
+        { a: rel.fromCountry, b: rel.toCountry }));
       continue;
     }
 
@@ -260,7 +261,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
       from.diplomaticInfluence = Math.max(0, from.diplomaticInfluence - 10);
       events.push(makeEvent(state, 'contraband_discovered', 'high',
         `Contraband route between ${rel.fromCountry} and ${rel.toCountry} discovered!`,
-        [rel.fromCountry, rel.toCountry]));
+        [rel.fromCountry, rel.toCountry],
+        { a: rel.fromCountry, b: rel.toCountry }));
       continue;
     }
 
@@ -299,7 +301,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
         if (bal.stockpile <= 0) {
           bal.stockpile = 0;
           events.push(makeEvent(state, 'stockpile_depleted', 'high',
-            `${code} strategic reserve of ${r} depleted!`, [code]));
+            `${code} strategic reserve of ${r} depleted!`, [code],
+            { code, resource: r }));
         }
       }
 
@@ -332,7 +335,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
     // Generate supply shock event for severe deficits
     if (totalSeverity > 3) {
       events.push(makeEvent(state, 'supply_shock', 'critical',
-        `${code} experiencing severe resource shortages!`, [code]));
+        `${code} experiencing severe resource shortages!`, [code],
+        { code }));
     }
   }
 
@@ -366,7 +370,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
     if (prices[r] > basePrice * 2) {
       events.push(makeEvent(state, 'price_spike', 'high',
         `Global ${r} price spiked to $${Math.round(prices[r])}!`,
-        []));
+        [],
+        { resource: r, price: Math.round(prices[r]) }));
     }
   }
 
@@ -399,6 +404,7 @@ function makeEvent(
   severity: GameEvent['severity'],
   description: string,
   involvedCountries: string[],
+  data: Record<string, unknown> = {},
 ): GameEvent {
   eventCounter++;
   return {
@@ -410,7 +416,7 @@ function makeEvent(
     title: description.split('!')[0] || description,
     description,
     involvedCountries,
-    data: {},
+    data,
     createdAt: new Date().toISOString(),
   };
 }

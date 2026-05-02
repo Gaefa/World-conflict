@@ -37,6 +37,14 @@ interface GlobeWrapperProps {
   highlightedCountries?: string[];
   countryPoints?: CountryPoint[];
   gameCountryCodes?: string[];
+  /** Disable auto-rotation once game is active so the map stays put */
+  isGameActive?: boolean;
+  /** Set of country codes the player is at war with */
+  warCountries?: Set<string>;
+  /** Set of country codes that are allied with the player */
+  allyCountries?: Set<string>;
+  /** Set of country codes the player has sanctioned */
+  sanctionedCountries?: Set<string>;
 }
 
 function resolveCountry(feat: CountryPolygon): { code: string; name: string } | null {
@@ -58,6 +66,10 @@ export function GlobeWrapper({
   highlightedCountries = [],
   countryPoints = [],
   gameCountryCodes = [],
+  isGameActive = false,
+  warCountries = new Set(),
+  allyCountries = new Set(),
+  sanctionedCountries = new Set(),
 }: GlobeWrapperProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,25 +125,31 @@ export function GlobeWrapper({
   useEffect(() => {
     if (globeRef.current) {
       const controls = globeRef.current.controls();
-      controls.autoRotate = true;
+      // Stop auto-rotation once a game is active — prevents the map from
+      // "floating away" while the player is trying to click on countries.
+      controls.autoRotate = !isGameActive;
       controls.autoRotateSpeed = 0.3;
       controls.enableZoom = true;
       controls.minDistance = 150;
       controls.maxDistance = 500;
     }
-  }, [ready, countries]);
+  }, [ready, countries, isGameActive]);
 
   // ── Polygon callbacks ──
   const getPolygonColor = useCallback(
     (d: object) => {
       const resolved = resolveCountry(d as CountryPolygon);
       if (!resolved) return 'rgba(40, 50, 65, 0.6)';
-      if (resolved.code === selectedCountry) return 'rgba(220, 38, 38, 0.7)';
-      if (highlightedCountries.includes(resolved.code)) return 'rgba(245, 158, 11, 0.5)';
-      if (gameCountryCodes.includes(resolved.code)) return 'rgba(70, 85, 110, 0.85)';
+      const code = resolved.code;
+      if (code === selectedCountry)       return 'rgba(220, 38, 38, 0.85)';  // selected: bright red
+      if (warCountries.has(code))         return 'rgba(185, 28, 28, 0.75)';  // at war: dark red
+      if (allyCountries.has(code))        return 'rgba(21, 128, 61, 0.65)';  // ally: green
+      if (sanctionedCountries.has(code))  return 'rgba(180, 83, 9, 0.65)';   // sanctioned: orange
+      if (highlightedCountries.includes(code)) return 'rgba(245, 158, 11, 0.45)'; // other game country: amber
+      if (gameCountryCodes.includes(code)) return 'rgba(70, 85, 110, 0.85)';
       return 'rgba(50, 60, 80, 0.7)';
     },
-    [selectedCountry, highlightedCountries, gameCountryCodes],
+    [selectedCountry, highlightedCountries, gameCountryCodes, warCountries, allyCountries, sanctionedCountries],
   );
 
   const getPolygonSideColor = useCallback(() => 'rgba(40, 45, 60, 0.6)', []);

@@ -37,6 +37,56 @@ function localizeEventTitle(t: Translations, eventType: string, fallback: string
   return fallback;
 }
 
+// Build a localized description from structured event data
+function localizeEventDescription(
+  t: Translations,
+  eventType: string,
+  rawDescription: string,
+  data: Record<string, unknown>,
+  nameMap: Record<string, string>,
+): string {
+  const name = (code: unknown) => nameMap[code as string] ?? (code as string) ?? '';
+
+  switch (eventType) {
+    case 'supply_shock':
+      if (data.code) {
+        return t.ev_desc_supply_shock.replace('{country}', name(data.code));
+      }
+      break;
+    case 'price_spike':
+      if (data.resource && data.price !== undefined) {
+        return t.ev_desc_price_spike
+          .replace('{resource}', t[`rlabel_${data.resource}` as keyof Translations] as string || String(data.resource))
+          .replace('{price}', String(data.price));
+      }
+      break;
+    case 'stockpile_depleted':
+      if (data.code && data.resource) {
+        return t.ev_desc_stockpile_depleted
+          .replace('{country}', name(data.code))
+          .replace('{resource}', t[`rlabel_${data.resource}` as keyof Translations] as string || String(data.resource));
+      }
+      break;
+    case 'trade_disrupted':
+      if (data.a && data.b) {
+        return t.ev_desc_trade_disrupted
+          .replace('{a}', name(data.a))
+          .replace('{b}', name(data.b));
+      }
+      break;
+    case 'contraband_discovered':
+      if (data.a && data.b) {
+        return t.ev_desc_contraband
+          .replace('{a}', name(data.a))
+          .replace('{b}', name(data.b));
+      }
+      break;
+  }
+
+  // Fallback: replace bare country codes (2-3 uppercase letters) with names
+  return rawDescription.replace(/\b([A-Z]{2,3})\b/g, (match) => nameMap[match] ?? match);
+}
+
 interface GameEvent {
   id: string;
   type: string;
@@ -44,6 +94,7 @@ interface GameEvent {
   description: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   tick: number;
+  data?: Record<string, unknown>;
 }
 
 const MONTH_NAMES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -76,9 +127,11 @@ const FILTER_COLORS: Record<Severity, { active: string; inactive: string }> = {
 
 interface EventsFeedProps {
   events: GameEvent[];
+  /** country code → name map for localizing descriptions */
+  countryNames?: Record<string, string>;
 }
 
-export function EventsFeed({ events }: EventsFeedProps) {
+export function EventsFeed({ events, countryNames = {} }: EventsFeedProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [minSeverity, setMinSeverity] = useState<Severity>('medium');
   const { t, locale } = useLocaleStore();
@@ -155,7 +208,9 @@ export function EventsFeed({ events }: EventsFeedProps) {
                     <span className="font-bold text-text-primary">{localizeEventTitle(t, event.type, event.title)}</span>
                     <span className="text-text-muted font-mono text-[10px]">{tickToDate(event.tick, locale ?? 'en')}</span>
                   </div>
-                  <p className="text-text-secondary">{event.description}</p>
+                  <p className="text-text-secondary">
+                    {localizeEventDescription(t, event.type, event.description, event.data ?? {}, countryNames)}
+                  </p>
                 </div>
               ))
             )}

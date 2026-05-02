@@ -520,6 +520,13 @@ export interface Translations {
   onb_win_body: string;
   onb_win_tip: string;
 
+  // ── Event descriptions (localized templates) ──
+  ev_desc_supply_shock: string;
+  ev_desc_price_spike: string;
+  ev_desc_stockpile_depleted: string;
+  ev_desc_trade_disrupted: string;
+  ev_desc_contraband: string;
+
   // ── Goals panel ──
   goals_title: string;
   goals_domination: string;

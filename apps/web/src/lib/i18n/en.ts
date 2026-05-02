@@ -516,6 +516,13 @@ export const en: Translations = {
   onb_win_body: 'Research unlocks better weapons, economic boosts and spy tools. Intelligence lets you spy, destabilize and run covert ops. Military — only when diplomacy fails.',
   onb_win_tip: 'Pro tip: pause the game (header button) any time you need to think through your next move.',
 
+  // Event description templates
+  ev_desc_supply_shock: '{country} is experiencing severe resource shortages!',
+  ev_desc_price_spike: 'Global {resource} price spiked to ${price}!',
+  ev_desc_stockpile_depleted: '{country} strategic reserve of {resource} is depleted!',
+  ev_desc_trade_disrupted: 'Trade route between {a} and {b} disrupted by sanctions!',
+  ev_desc_contraband: 'Contraband route between {a} and {b} has been discovered!',
+
   // Goals panel
   goals_title: 'Goals',
   goals_domination: 'Domination',
