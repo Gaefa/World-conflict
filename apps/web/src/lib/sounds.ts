@@ -5,6 +5,22 @@
 
 let audioCtx: AudioContext | null = null;
 
+// Global volume multiplier (0 = mute, 1 = full). Persisted to localStorage.
+let _volume: number = (() => {
+  if (typeof window === 'undefined') return 0.5;
+  const saved = localStorage.getItem('conflict_volume');
+  return saved !== null ? parseFloat(saved) : 0.5;
+})();
+
+export function getVolume(): number { return _volume; }
+
+export function setVolume(v: number): void {
+  _volume = Math.max(0, Math.min(1, v));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('conflict_volume', String(_volume));
+  }
+}
+
 function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
@@ -13,13 +29,14 @@ function getCtx(): AudioContext {
 }
 
 function beep(freq: number, duration: number, type: OscillatorType = 'sine', volume = 0.15) {
+  if (_volume === 0) return;
   try {
     const ctx = getCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.setValueAtTime(volume * _volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.connect(gain);
     gain.connect(ctx.destination);

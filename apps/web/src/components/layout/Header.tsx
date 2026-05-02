@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { useLocaleStore } from '@/stores/localeStore';
 import { LocaleToggle } from '@/components/ui/LocalePicker';
+import { getVolume, setVolume } from '@/lib/sounds';
 
 interface HeaderProps {
   activeSessions: number;
@@ -25,6 +27,12 @@ export function Header({
   onSave,
 }: HeaderProps) {
   const { t, locale, setShowTutorial } = useLocaleStore();
+  const [vol, setVol] = useState(() => getVolume());
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setVol(v);
+    setVolume(v);
+  }, []);
 
   const tensionColor = tensionIndex > 70 ? 'text-severity-high' : tensionIndex > 40 ? 'text-amber-400' : 'text-accent-green';
   const tensionLabel = tensionIndex > 70 ? t.header_tension_critical : tensionIndex > 40 ? t.header_tension_elevated : t.header_tension_stable;
@@ -65,6 +73,17 @@ export function Header({
         >
           ?
         </button>
+        {/* Volume control */}
+        <div className="flex items-center gap-1.5" title={t.header_volume}>
+          <span className="text-text-muted text-xs select-none">{vol === 0 ? '🔇' : vol < 0.5 ? '🔉' : '🔊'}</span>
+          <input
+            type="range" min={0} max={1} step={0.05}
+            value={vol}
+            onChange={handleVolumeChange}
+            className="w-16 accent-accent-red cursor-pointer"
+            aria-label={t.header_volume}
+          />
+        </div>
         <LocaleToggle />
         <div className="flex items-center gap-2 bg-bg-card px-3 py-1 rounded border border-border-default">
           <span className="text-text-primary text-sm font-mono">{tickToDate(currentTick, locale ?? 'en')}</span>

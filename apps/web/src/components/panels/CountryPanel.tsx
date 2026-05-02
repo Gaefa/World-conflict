@@ -20,7 +20,7 @@ interface CountryPanelProps {
 }
 
 export function CountryPanel({ country }: CountryPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const { t } = useLocaleStore();
 
   return (

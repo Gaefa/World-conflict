@@ -14,6 +14,7 @@ export interface Translations {
   header_tick: string;
   header_pause: string;
   header_resume: string;
+  header_volume: string;
   header_help: string;
 
   // ── Session / Create modal ──
@@ -502,6 +503,47 @@ export interface Translations {
   onb_step_events_body: string;
   onb_step_victory_title: string;
   onb_step_victory_body: string;
+  // New compact tutorial keys
+  onb_goal_title: string;
+  onb_goal_body: string;
+  onb_goal_tip: string;
+  onb_start_title: string;
+  onb_start_body: string;
+  onb_start_tip: string;
+  onb_econ_title: string;
+  onb_econ_body: string;
+  onb_econ_tip: string;
+  onb_diplo_title: string;
+  onb_diplo_body: string;
+  onb_diplo_tip: string;
+  onb_win_title: string;
+  onb_win_body: string;
+  onb_win_tip: string;
+
+  // ── Event type localized titles ──
+  ev_type_war_declared: string;
+  ev_type_peace_treaty: string;
+  ev_type_alliance_formed: string;
+  ev_type_alliance_broken: string;
+  ev_type_battle_result: string;
+  ev_type_trade_agreement: string;
+  ev_type_sanction_imposed: string;
+  ev_type_sanction_lifted: string;
+  ev_type_revolution: string;
+  ev_type_coup: string;
+  ev_type_economic_crisis: string;
+  ev_type_economic_boom: string;
+  ev_type_tech_breakthrough: string;
+  ev_type_supply_shock: string;
+  ev_type_price_spike: string;
+  ev_type_stockpile_depleted: string;
+  ev_type_trade_disrupted: string;
+  ev_type_contraband: string;
+  ev_type_spy_caught: string;
+  ev_type_spy_success: string;
+  ev_type_tech_completed: string;
+  ev_type_victory: string;
+  ev_type_civil_unrest: string;
 }
 
 /** Tech tree translations: id -> { name, effects[] } — kept separate from the flat dictionary. */

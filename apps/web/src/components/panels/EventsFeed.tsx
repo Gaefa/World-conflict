@@ -2,6 +2,40 @@
 
 import { useState } from 'react';
 import { useLocaleStore } from '@/stores/localeStore';
+import type { Translations } from '@/lib/i18n/types';
+
+// Map event type → localized title key
+const EVENT_TYPE_TITLE: Partial<Record<string, keyof Translations>> = {
+  war_declared:            'ev_type_war_declared',
+  peace_treaty:            'ev_type_peace_treaty',
+  alliance_formed:         'ev_type_alliance_formed',
+  alliance_broken:         'ev_type_alliance_broken',
+  battle_result:           'ev_type_battle_result',
+  trade_agreement:         'ev_type_trade_agreement',
+  sanction_imposed:        'ev_type_sanction_imposed',
+  sanction_lifted:         'ev_type_sanction_lifted',
+  revolution:              'ev_type_revolution',
+  coup:                    'ev_type_coup',
+  economic_crisis:         'ev_type_economic_crisis',
+  economic_boom:           'ev_type_economic_boom',
+  technology_breakthrough: 'ev_type_tech_breakthrough',
+  supply_shock:            'ev_type_supply_shock',
+  price_spike:             'ev_type_price_spike',
+  stockpile_depleted:      'ev_type_stockpile_depleted',
+  trade_disrupted:         'ev_type_trade_disrupted',
+  contraband_discovered:   'ev_type_contraband',
+  spy_caught:              'ev_type_spy_caught',
+  spy_success:             'ev_type_spy_success',
+  tech_completed:          'ev_type_tech_completed',
+  victory:                 'ev_type_victory',
+  civil_unrest:            'ev_type_civil_unrest',
+};
+
+function localizeEventTitle(t: Translations, eventType: string, fallback: string): string {
+  const key = EVENT_TYPE_TITLE[eventType];
+  if (key && t[key]) return t[key] as string;
+  return fallback;
+}
 
 interface GameEvent {
   id: string;
@@ -45,7 +79,7 @@ interface EventsFeedProps {
 }
 
 export function EventsFeed({ events }: EventsFeedProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [minSeverity, setMinSeverity] = useState<Severity>('medium');
   const { t, locale } = useLocaleStore();
 
@@ -118,7 +152,7 @@ export function EventsFeed({ events }: EventsFeedProps) {
                   className={`bg-bg-card border-l-2 ${SEVERITY_STYLES[event.severity]} p-2 rounded-r text-xs animate-fade-in`}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold text-text-primary">{event.title}</span>
+                    <span className="font-bold text-text-primary">{localizeEventTitle(t, event.type, event.title)}</span>
                     <span className="text-text-muted font-mono text-[10px]">{tickToDate(event.tick, locale ?? 'en')}</span>
                   </div>
                   <p className="text-text-secondary">{event.description}</p>
