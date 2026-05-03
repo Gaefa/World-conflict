@@ -23,6 +23,8 @@ export function makeDipRelation(
   };
 }
 
+let _evtSeq = 0;
+
 export function addEvent(
   state: GameState,
   type: string,
@@ -32,7 +34,7 @@ export function addEvent(
   involved: string[],
 ) {
   state.events.push({
-    id: `evt-${type}-${involved.join('-')}-${state.session.currentTick}`,
+    id: `evt-${type}-${involved.join('-')}-${state.session.currentTick}-${++_evtSeq}`,
     sessionId: state.session.id,
     type: type as any,
     title,

@@ -111,7 +111,7 @@ export function ActionBtn({ label, cost, effect, disabled, onClick }: ActionBtnP
 }
 
 export function getResourceLabel(t: Translations, key: string): string {
-  return (t as any)['rlabel_' + key] ?? key;
+  return (t as unknown as Record<string, string>)['rlabel_' + key] ?? key;
 }
 
 export function formatNum(n: number): string {

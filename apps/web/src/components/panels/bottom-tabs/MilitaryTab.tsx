@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { PlayerAction, ResourceType } from '@conflict-game/shared-types';
 import { WarMap } from '../../military/WarMap';
 import { useLocaleStore } from '@/stores/localeStore';
@@ -22,12 +22,10 @@ export function MilitaryTab({
   const m = country.military;
   const hasTarget = targetCountryCode && targetCountryCode !== playerCountryCode;
   const isAtWar = (warCountries?.size ?? 0) > 0;
-  const [subTab, setSubTab] = useState<'overview' | 'map' | 'ops'>(isAtWar ? 'map' : 'overview');
-
-  // Switch to map when war starts (e.g., mid-session)
-  useEffect(() => {
-    if (isAtWar) setSubTab('map');
-  }, [isAtWar]);
+  const [subTab, setSubTab] = useState<'overview' | 'map' | 'ops'>('overview');
+  // Derive active tab: when war is active and user hasn't manually picked ops,
+  // default to the war map — no useEffect needed.
+  const activeTab = isAtWar && subTab === 'overview' ? 'map' : subTab;
 
   const act = (action: PlayerAction) => {
     if (canAct && onAction) onAction(action);
@@ -81,7 +79,7 @@ export function MilitaryTab({
             key={st.key}
             onClick={() => setSubTab(st.key)}
             className={`px-3 py-1 text-xs font-bold uppercase rounded-t transition-colors ${
-              subTab === st.key
+              activeTab === st.key
                 ? 'bg-bg-card text-text-primary border border-border-default border-b-0'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
@@ -92,7 +90,7 @@ export function MilitaryTab({
       </div>
 
       {/* ── Overview ── */}
-      {subTab === 'overview' && (
+      {activeTab === 'overview' && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">{t.mil_section_capabilities}</h4>
@@ -128,7 +126,7 @@ export function MilitaryTab({
       )}
 
       {/* ── War Map ── */}
-      {subTab === 'map' && (
+      {activeTab === 'map' && (
         <WarMap
           armies={armies}
           relations={relations ?? []}
@@ -139,7 +137,7 @@ export function MilitaryTab({
       )}
 
       {/* ── Ops ── */}
-      {subTab === 'ops' && (
+      {activeTab === 'ops' && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h4 className="text-xs font-bold uppercase text-text-secondary mb-2">

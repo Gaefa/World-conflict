@@ -144,7 +144,9 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
 
   socket.on('close', () => {
     if (playerId) {
-      // Check identity to avoid deleting the connection if the player reconnected with a new socket
+      // Only remove if this specific socket is still the active connection.
+      // A reconnect may have already replaced it — deleting blindly would
+      // evict the new connection.
       const currentConn = connections.get(playerId);
       if (currentConn && currentConn.socket === socket) {
         connections.delete(playerId);

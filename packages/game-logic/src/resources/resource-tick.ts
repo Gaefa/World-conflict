@@ -191,6 +191,10 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
       const baseRate = BASE_CONSUMPTION[r] ?? 1;
       const bal = getBalance(country, r);
 
+      // Preserve processing-chain demand already added in Step 2
+      // (Step 2 does += on bal.consumption; we must not overwrite it).
+      const processingDemand = bal.consumption;
+
       // Higher-tech countries consume more processed goods, less raw
       let consumption: number;
       if (['semiconductors', 'electronics', 'pharmaceuticals', 'luxuryGoods'].includes(r)) {
@@ -202,7 +206,7 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
         consumption = baseRate * gdpFactor * (techFactor * 0.5) * 0.3;
       }
 
-      bal.consumption = Math.max(0.1, consumption);
+      bal.consumption = Math.max(0.1, consumption) + processingDemand;
       country.resourceState[r] = bal;
     }
   }

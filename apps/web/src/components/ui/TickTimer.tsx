@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface TickTimerProps {
   tickDurationMs: number;
@@ -13,32 +13,31 @@ interface TickTimerProps {
  * Resets automatically whenever `lastTickAt` changes (new tick arrived).
  */
 export function TickTimer({ tickDurationMs, lastTickAt, isPaused }: TickTimerProps) {
-  const [progress, setProgress] = useState(0); // 0→1
-  const [remaining, setRemaining] = useState(tickDurationMs);
+  // Single counter just to trigger re-renders; actual values are computed below.
+  const [, setFrame] = useState(0);
   const rafRef = useRef<number | null>(null);
+
+  const tick = useCallback(() => {
+    setFrame(f => f + 1);
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
 
   useEffect(() => {
     if (isPaused || lastTickAt === 0) {
-      setProgress(0);
-      setRemaining(tickDurationMs);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
       return;
     }
-
-    const animate = () => {
-      const elapsed = Date.now() - lastTickAt;
-      const p = Math.min(elapsed / tickDurationMs, 1);
-      setProgress(p);
-      setRemaining(Math.max(0, tickDurationMs - elapsed));
-      if (p < 1) rafRef.current = requestAnimationFrame(animate);
-    };
-
-    rafRef.current = requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [lastTickAt, tickDurationMs, isPaused]);
+  }, [lastTickAt, tickDurationMs, isPaused, tick]);
 
-  const secs = Math.ceil(remaining / 1000);
+  // Compute display values during render — no state needed for these.
+  const elapsed = isPaused || lastTickAt === 0 ? 0 : Date.now() - lastTickAt;
+  const progress = Math.min(elapsed / tickDurationMs, 1);
+  const secs = Math.ceil(Math.max(0, tickDurationMs - elapsed) / 1000);
 
   // Color: green → amber → red as tick approaches
   const barColor = progress < 0.6 ? '#22c55e' : progress < 0.85 ? '#f59e0b' : '#ef4444';

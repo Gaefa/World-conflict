@@ -1,14 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useLocaleStore } from '@/stores/localeStore';
 import type { ActionResult } from '@conflict-game/shared-types';
 import type { Translations } from '@/lib/i18n/types';
 
 function localizeActionMessage(t: Translations, ar: ActionResult): string {
-  const a = ar.action as any;
-  const tc: string = a.targetCountry ?? '';
+  const a = ar.action;
 
   switch (a.type) {
     case 'airstrike': {
@@ -19,37 +18,38 @@ function localizeActionMessage(t: Translations, ar: ActionResult): string {
       };
       return t.res_airstrike
         .replace('{intensity}', intMap[a.intensity] ?? a.intensity)
-        .replace('{country}', tc);
+        .replace('{country}', a.targetCountry);
     }
     case 'invasion':
-      return (ar.success ? t.res_invasion_ok : t.res_invasion_fail).replace('{country}', tc);
+      return (ar.success ? t.res_invasion_ok : t.res_invasion_fail).replace('{country}', a.targetCountry);
     case 'naval_blockade':
-      return t.res_blockade.replace('{country}', tc);
+      return t.res_blockade.replace('{country}', a.targetCountry);
     case 'drone_raid':
-      return t.res_drone.replace('{country}', tc);
+      return t.res_drone.replace('{country}', a.targetCountry);
     case 'nuclear_strike':
-      return t.res_nuclear.replace('{country}', tc);
+      return t.res_nuclear.replace('{country}', a.targetCountry);
     case 'allocate_budget':
       return t.res_budget_alloc
-        .replace('{amount}', (a.amount as number).toFixed(1))
+        .replace('{amount}', a.amount.toFixed(1))
         .replace('{category}', a.category ?? '');
     case 'research_tech':
       return ar.success ? t.res_research_ok : (ar.message || t.res_generic_fail);
     case 'cancel_research':
       return t.res_research_cancel;
     case 'declare_war':
-      return t.res_declare_war.replace('{country}', tc);
+      return t.res_declare_war.replace('{country}', a.targetCountry);
     case 'propose_peace':
-      return t.res_peace.replace('{country}', tc);
+      return t.res_peace.replace('{country}', a.targetCountry);
     case 'propose_alliance':
-      return t.res_alliance.replace('{country}', tc);
+      return t.res_alliance.replace('{country}', a.targetCountry);
     case 'propose_trade':
+      return t.res_trade_prop.replace('{country}', a.targetCountry);
     case 'counter_trade':
-      return t.res_trade_prop.replace('{country}', tc);
+      return t.res_trade_prop.replace('{country}', '');
     case 'arms_deal':
-      return t.res_arms_deal.replace('{country}', tc);
+      return t.res_arms_deal.replace('{country}', a.targetCountry);
     case 'propose_sanction':
-      return t.res_sanction.replace('{country}', tc);
+      return t.res_sanction.replace('{country}', a.targetCountry);
     default:
       return ar.success ? t.res_generic_ok : (ar.message || t.res_generic_fail);
   }
@@ -60,15 +60,19 @@ export function ActionToast() {
   const { t } = useLocaleStore();
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(lastActionResult);
+  // Ref tracks the last result we've already shown — avoids listing `current`
+  // in the effect deps (which would re-trigger on the same tick).
+  const seenRef = useRef(lastActionResult);
 
   useEffect(() => {
-    if (lastActionResult && lastActionResult !== current) {
+    if (lastActionResult && lastActionResult !== seenRef.current) {
+      seenRef.current = lastActionResult;
       setCurrent(lastActionResult);
       setVisible(true);
       const timer = setTimeout(() => setVisible(false), 6000);
       return () => clearTimeout(timer);
     }
-  }, [lastActionResult, current]);
+  }, [lastActionResult]);
 
   if (!visible || !current) return null;
 
