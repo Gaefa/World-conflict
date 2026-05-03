@@ -288,6 +288,12 @@ export interface Translations {
   diplo_accept: string;
   diplo_reject: string;
 
+  // ── Proposal inbox (floating) ──
+  inbox_from: string;
+  inbox_proposal_alliance: string;
+  inbox_proposal_trade: string;
+  inbox_proposal_peace: string;
+
   // ── Intelligence tab ──
   intel_sub_overview: string;
   intel_sub_dossiers: string;

@@ -77,20 +77,22 @@ export function processProposeAlliance(
   if (existing) return fail(action, 'Already allied with this country');
 
   from.diplomaticInfluence -= 5;
-  state.relations.push(makeDipRelation(state, 'alliance', fromCode, targetCode));
+  const allianceRel = makeDipRelation(state, 'alliance', fromCode, targetCode);
+  allianceRel.status = 'proposed';
+  state.relations.push(allianceRel);
 
   addEvent(state, 'diplomatic_incident',
-    `${fromCode} and ${targetCode} form alliance`,
-    `A new alliance has been established.`,
+    `${fromCode} proposes alliance to ${targetCode}`,
+    `${fromCode} has sent a formal alliance proposal to ${targetCode}. Awaiting response.`,
     'medium', [fromCode, targetCode]);
 
   return {
     success: true, action,
-    message: `Alliance formed with ${targetCode}`,
+    message: `Alliance proposed to ${targetCode} — awaiting response`,
     effects: [
       { description: 'Diplomatic influence -5', known: true, value: '-5' },
-      { description: 'Mutual defense pact active', known: true },
-      { description: 'Trade benefits may follow', known: false },
+      { description: 'Awaiting acceptance', known: true },
+      { description: 'Mutual defense pact if accepted', known: false },
     ],
   };
 }
@@ -178,6 +180,7 @@ export function processProposeTrade(
 
   const duration = tradeAction.duration ?? 12;
   const relation = makeDipRelation(state, 'trade_agreement', fromCode, targetCode);
+  relation.status = 'proposed';
   relation.expiresAtTick = state.session.currentTick + duration;
   (relation as any).tradeFlows = tradeFlows;
   state.relations.push(relation);
@@ -186,13 +189,18 @@ export function processProposeTrade(
     ? tradeFlows.map((f: any) => `${f.resource} x${f.amountPerTick}/mo`).join(', ')
     : 'general trade';
 
+  addEvent(state, 'diplomatic_incident',
+    `${fromCode} proposes trade to ${targetCode}`,
+    `${fromCode} has sent a trade proposal to ${targetCode}. Awaiting response.`,
+    'low', [fromCode, targetCode]);
+
   return {
     success: true, action,
-    message: `Trade agreement with ${targetCode}: ${flowDesc}`,
+    message: `Trade proposed to ${targetCode} — awaiting response`,
     effects: [
       { description: 'Diplomatic influence -2', known: true, value: '-2' },
-      { description: `Trade flows: ${flowDesc}`, known: true },
-      { description: `Duration: ${duration} months`, known: true },
+      { description: `Proposed: ${flowDesc}`, known: true },
+      { description: `Duration if accepted: ${duration} months`, known: true },
       { description: 'Resources will flow via resource tick', known: false },
     ],
   };
@@ -211,25 +219,24 @@ export function processProposePeace(
   );
   if (!warRelation) return fail(action, `Not at war with ${targetCode}`);
 
-  warRelation.status = 'expired'; // closest valid status for "ended"
-
-  const from = state.countries[fromCode];
-  from.stability = clamp(from.stability + 5, 0, 100);
-  from.approval = clamp(from.approval + 5, 0, 100);
+  // Create a peace proposal (not immediate — target must accept)
+  const peaceRel = makeDipRelation(state, 'non_aggression' as any, fromCode, targetCode);
+  peaceRel.status = 'proposed';
+  (peaceRel as any).warRelationId = warRelation.id; // link to the war to end
+  state.relations.push(peaceRel);
 
   addEvent(state, 'diplomatic_incident',
-    `Peace between ${fromCode} and ${targetCode}`,
-    `A peace treaty has been signed.`,
-    'low', [fromCode, targetCode]);
+    `${fromCode} proposes peace to ${targetCode}`,
+    `${fromCode} has sent a peace proposal to ${targetCode}. Awaiting acceptance.`,
+    'medium', [fromCode, targetCode]);
 
   return {
     success: true, action,
-    message: `Peace treaty signed with ${targetCode}`,
+    message: `Peace proposed to ${targetCode} — awaiting acceptance`,
     effects: [
-      { description: 'War ended', known: true },
-      { description: 'Stability +5', known: true, value: '+5' },
-      { description: 'Approval +5', known: true, value: '+5' },
-      { description: 'Economic recovery may follow', known: false },
+      { description: 'Awaiting response', known: true },
+      { description: 'Stability +5 on acceptance', known: true, value: '+5' },
+      { description: 'Approval +5 on acceptance', known: true, value: '+5' },
     ],
   };
 }
@@ -301,18 +308,50 @@ export function processProposalResponse(
   if (!relation) return fail(action, 'Proposal not found');
 
   if (action.type === 'accept_proposal') {
+    // Peace proposal: end the war, give bonuses
+    const isPeace = relation.type === 'non_aggression' && (relation as any).warRelationId;
+    if (isPeace) {
+      const warRel = state.relations.find(r => r.id === (relation as any).warRelationId);
+      if (warRel) warRel.status = 'expired';
+      relation.status = 'expired'; // the proposal itself expires
+      for (const code of [relation.fromCountry, relation.toCountry]) {
+        const c = state.countries[code];
+        if (c) {
+          c.stability = clamp(c.stability + 5, 0, 100);
+          c.approval = clamp(c.approval + 5, 0, 100);
+        }
+      }
+      addEvent(state, 'diplomatic_incident',
+        `Peace treaty: ${relation.fromCountry} & ${relation.toCountry}`,
+        `A peace treaty has been signed. The war is over.`,
+        'low', [relation.fromCountry, relation.toCountry]);
+      return {
+        success: true, action,
+        message: `Peace accepted — war with ${relation.fromCountry} ended`,
+        effects: [
+          { description: 'War ended', known: true },
+          { description: 'Stability +5', known: true, value: '+5' },
+          { description: 'Approval +5', known: true, value: '+5' },
+        ],
+      };
+    }
+
     relation.status = 'active';
+    addEvent(state, 'diplomatic_incident',
+      `${relation.toCountry} accepts ${relation.type} from ${relation.fromCountry}`,
+      `${relation.toCountry} has accepted the ${relation.type} proposal.`,
+      'low', [relation.fromCountry, relation.toCountry]);
     return {
       success: true, action,
-      message: 'Proposal accepted',
-      effects: [{ description: `${relation.type} with ${relation.fromCountry} accepted`, known: true }],
+      message: `${relation.type} with ${relation.fromCountry} accepted`,
+      effects: [{ description: `${relation.type} now active`, known: true }],
     };
   } else {
     relation.status = 'rejected';
     return {
       success: true, action,
-      message: 'Proposal rejected',
-      effects: [{ description: `${relation.type} with ${relation.fromCountry} rejected`, known: true }],
+      message: `${relation.type} from ${relation.fromCountry} rejected`,
+      effects: [{ description: `${relation.type} declined`, known: true }],
     };
   }
 }

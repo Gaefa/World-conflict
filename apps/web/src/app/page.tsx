@@ -10,6 +10,7 @@ import { CreateSessionModal } from '@/components/ui/CreateSessionModal';
 import { SaveLoadModal } from '@/components/ui/SaveLoadModal';
 import { PriceTicker } from '@/components/ui/PriceTicker';
 import { ActionToast } from '@/components/ui/ActionToast';
+import { ProposalInbox } from '@/components/ui/ProposalInbox';
 import { LocalePicker } from '@/components/ui/LocalePicker';
 import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
 import { GoalsPanel } from '@/components/ui/GoalsPanel';
@@ -309,6 +310,16 @@ export default function Home() {
       )}
 
       <ActionToast />
+
+      {/* Floating proposal inbox — shows incoming AI proposals without opening Diplomacy tab */}
+      {gameState?.session.status === 'active' && playerCountryCode && gameState.relations && (
+        <ProposalInbox
+          playerCountryCode={playerCountryCode}
+          relations={gameState.relations}
+          countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
+          onAction={sendAction}
+        />
+      )}
 
       {modalMode && (
         <CreateSessionModal mode={modalMode} onClose={() => setModalMode(null)} />

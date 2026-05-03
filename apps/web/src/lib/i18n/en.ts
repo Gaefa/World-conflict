@@ -287,6 +287,12 @@ export const en: Translations = {
   diplo_accept: 'Accept',
   diplo_reject: 'Reject',
 
+  // Proposal inbox
+  inbox_from: 'from',
+  inbox_proposal_alliance: 'Alliance Proposal',
+  inbox_proposal_trade: 'Trade Proposal',
+  inbox_proposal_peace: 'Peace Proposal',
+
   // Intelligence tab
   intel_sub_overview: 'Overview',
   intel_sub_dossiers: 'Dossiers',

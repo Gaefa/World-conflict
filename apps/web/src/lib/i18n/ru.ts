@@ -287,6 +287,12 @@ export const ru: Translations = {
   diplo_accept: 'Принять',
   diplo_reject: 'Отклонить',
 
+  // Proposal inbox
+  inbox_from: 'от',
+  inbox_proposal_alliance: 'Предложение альянса',
+  inbox_proposal_trade: 'Торговое предложение',
+  inbox_proposal_peace: 'Предложение мира',
+
   // Intelligence tab
   intel_sub_overview: 'Обзор',
   intel_sub_dossiers: 'Досье',
