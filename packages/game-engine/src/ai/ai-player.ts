@@ -1,4 +1,4 @@
-import type { GameState, CountryState, PlayerAction, DiplomaticRelation } from '@conflict-game/shared-types';
+import type { GameState, CountryState, PlayerAction, DiplomaticRelation, ResourceType } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { RNG } from '@conflict-game/game-logic';
 
@@ -434,7 +434,7 @@ function buildTradeProposal(
   return {
     type: 'propose_trade',
     targetCountry: toCode,
-    offers: [{ resource: offerResource as any, amount: 5 + Math.floor(rng() * 10) }],
+    offers: [{ resource: offerResource as ResourceType, amount: 5 + Math.floor(rng() * 10) }],
     requests: [],
     duration: 12,
   };

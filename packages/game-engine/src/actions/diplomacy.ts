@@ -2,6 +2,7 @@ import type {
   PlayerAction,
   ActionResult,
   GameState,
+  DiplomaticRelation,
 } from '@conflict-game/shared-types';
 import { addEvent, clamp, fail, makeDipRelation } from './_helpers';
 
@@ -220,9 +221,9 @@ export function processProposePeace(
   if (!warRelation) return fail(action, `Not at war with ${targetCode}`);
 
   // Create a peace proposal (not immediate — target must accept)
-  const peaceRel = makeDipRelation(state, 'non_aggression' as any, fromCode, targetCode);
+  const peaceRel = makeDipRelation(state, 'non_aggression', fromCode, targetCode);
   peaceRel.status = 'proposed';
-  (peaceRel as any).warRelationId = warRelation.id; // link to the war to end
+  (peaceRel as DiplomaticRelation & { warRelationId: string }).warRelationId = warRelation.id;
   state.relations.push(peaceRel);
 
   addEvent(state, 'diplomatic_incident',
@@ -309,9 +310,11 @@ export function processProposalResponse(
 
   if (action.type === 'accept_proposal') {
     // Peace proposal: end the war, give bonuses
-    const isPeace = relation.type === 'non_aggression' && (relation as any).warRelationId;
+    type PeaceRel = DiplomaticRelation & { warRelationId?: string };
+    const warRelationId = (relation as PeaceRel).warRelationId;
+    const isPeace = relation.type === 'non_aggression' && warRelationId;
     if (isPeace) {
-      const warRel = state.relations.find(r => r.id === (relation as any).warRelationId);
+      const warRel = state.relations.find(r => r.id === warRelationId);
       if (warRel) warRel.status = 'expired';
       relation.status = 'expired'; // the proposal itself expires
       for (const code of [relation.fromCountry, relation.toCountry]) {

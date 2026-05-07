@@ -134,10 +134,20 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
   const events: GameEvent[] = [];
   const allResources = Object.keys(BASE_CONSUMPTION) as ResourceType[];
 
-  // ── Step 1: Raw production ──
-  for (const [code, country] of Object.entries(state.countries)) {
+  // ── Step 1: Reset per-tick accumulators, then set raw production ──
+  // consumption is reset here so Step 2 (processing chains) and Step 3
+  // (base demand) can accumulate into it cleanly without compounding across ticks.
+  for (const [, country] of Object.entries(state.countries)) {
     if (!country.resourceState) country.resourceState = {};
 
+    // Reset consumption for all resources first
+    for (const r of allResources) {
+      const bal = getBalance(country, r);
+      bal.consumption = 0;
+      country.resourceState[r] = bal;
+    }
+
+    // Then reset production/trade flows for raw resources
     for (const r of RAW_RESOURCES) {
       const capacity = (country.resources as unknown as Record<string, number>)[r] ?? 0;
       const bal = getBalance(country, r);
@@ -191,8 +201,8 @@ export function processResourceTick(state: GameState, rng: RNG): ResourceTickRes
       const baseRate = BASE_CONSUMPTION[r] ?? 1;
       const bal = getBalance(country, r);
 
-      // Preserve processing-chain demand already added in Step 2
-      // (Step 2 does += on bal.consumption; we must not overwrite it).
+      // Step 2 may have added processing-chain demand via +=.
+      // Consumption was reset to 0 in Step 1, so this is the clean Step 2 total.
       const processingDemand = bal.consumption;
 
       // Higher-tech countries consume more processed goods, less raw
