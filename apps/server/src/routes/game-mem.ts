@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState } from '@conflict-game/game-engine';
 import type { AIState } from '@conflict-game/game-engine';
-import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
+import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES, defaultTechBonuses } from '@conflict-game/shared-types';
@@ -27,7 +27,7 @@ function defaultTech(techLevel: number): TechnologyState {
   };
 }
 
-import { setStateResolver, setGameLoopRef } from '../ws/handler.js';
+import { setStateResolver, setGameLoopRef } from '@conflict-game/game-transport';
 
 const store = new InMemoryGameStateStore();
 

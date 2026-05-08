@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { gameSessions, players, countryStates, gameEvents } from '../db/schema.js';
 import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter } from '@conflict-game/game-engine';
-import { broadcastToSession, sendToPlayer, getPlayerConnections } from '../ws/handler.js';
+import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
 import type { GameState, GameSettings, CountryState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import { PROCESSING_CHAINS } from '@conflict-game/game-logic';
