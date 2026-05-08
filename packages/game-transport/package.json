@@ -9,12 +9,16 @@
   },
   "dependencies": {
     "@conflict-game/shared-types": "*",
-    "@conflict-game/game-engine": "*",
+    "@conflict-game/game-engine": "*"
+  },
+  "peerDependencies": {
     "fastify": "^5.2.0",
     "@fastify/websocket": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "fastify": "^5.2.0",
+    "@fastify/websocket": "^11.0.0",
     "typescript": "^5.8.2"
   }
 }

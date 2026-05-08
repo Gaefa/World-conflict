@@ -144,8 +144,12 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
 
   socket.on('close', () => {
     if (playerId) {
-      connections.delete(playerId);
-      console.log(`Player ${playerId} disconnected`);
+      // Check identity to avoid deleting the connection if the player reconnected with a new socket
+      const currentConn = connections.get(playerId);
+      if (currentConn && currentConn.socket === socket) {
+        connections.delete(playerId);
+        console.log(`Player ${playerId} disconnected`);
+      }
     }
   });
 }
