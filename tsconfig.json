@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared-types" },
+    { "path": "packages/utils" },
+    { "path": "packages/game-logic" },
+    { "path": "packages/game-engine" },
+    { "path": "packages/game-transport" },
+    { "path": "apps/server" },
+    { "path": "apps/web" }
+  ]
+}

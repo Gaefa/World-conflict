@@ -1,11 +1,14 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { wsHandler } from '@conflict-game/game-transport';
+import { FastifyWebSocketTransport } from '@conflict-game/game-transport';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const USE_DB = !!process.env.DATABASE_URL;
+
+// Export transport globally so routes can bind to it
+export const transport = new FastifyWebSocketTransport();
 
 async function main() {
   const app = Fastify({ logger: true });
@@ -34,7 +37,7 @@ async function main() {
   }
 
   // WebSocket
-  app.get('/ws', { websocket: true }, wsHandler);
+  app.get('/ws', { websocket: true }, transport.getHandler());
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

@@ -2,20 +2,20 @@ import type { FastifyPluginAsync } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { gameSessions, players, countryStates, gameEvents } from '../db/schema.js';
-import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter } from '@conflict-game/game-engine';
-import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
+import { GameLoop, InMemoryGameStateStore } from '@conflict-game/game-engine';
 import type { GameState, GameSettings, CountryState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import { PROCESSING_CHAINS } from '@conflict-game/game-logic';
+import { transport } from '../index.js';
 
 // Shared game loop instance (single-process, Phase 1 architecture)
 const store = new InMemoryGameStateStore();
-const wsAdapter: GameLoopAdapter = {
-  sendToPlayer,
-  broadcast: (sessionId, message) => broadcastToSession(sessionId, message),
-  getPlayerConnections,
-};
-const gameLoop = new GameLoop(store, wsAdapter);
+
+const gameLoop = new GameLoop(store, transport);
+
+// Let transport look up game state and game loop for pause/resume
+transport.setStateResolver((sessionId) => store.getState(sessionId));
+transport.setGameLoopRef(gameLoop);
 
 export { gameLoop, store };
 

@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState } from '@conflict-game/game-engine';
+import { GameLoop, InMemoryGameStateStore, createAIState } from '@conflict-game/game-engine';
 import type { AIState } from '@conflict-game/game-engine';
-import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
 import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES, defaultTechBonuses } from '@conflict-game/shared-types';
 import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses } from '@conflict-game/game-logic';
+import { transport } from '../index.js';
 
 /** Default intelligence state for a new country */
 function defaultIntel(): IntelligenceState {
@@ -27,26 +27,17 @@ function defaultTech(techLevel: number): TechnologyState {
   };
 }
 
-import { setStateResolver, setGameLoopRef } from '@conflict-game/game-transport';
-
 const store = new InMemoryGameStateStore();
 
-/** WebSocket-backed adapter — injected into the game loop. */
-const wsAdapter: GameLoopAdapter = {
-  sendToPlayer,
-  broadcast: (sessionId, message) => broadcastToSession(sessionId, message),
-  getPlayerConnections,
-};
-
-const gameLoop = new GameLoop(store, wsAdapter);
+const gameLoop = new GameLoop(store, transport);
 
 // AI state per session: sessionId → countryCode → AIState
 const aiStates = new Map<string, Map<string, AIState>>();
 export { aiStates };
 
 // Let WS handler look up game state and game loop for pause/resume
-setStateResolver((sessionId) => store.getState(sessionId));
-setGameLoopRef(gameLoop);
+transport.setStateResolver((sessionId) => store.getState(sessionId));
+transport.setGameLoopRef(gameLoop);
 
 // Wire AI states to game loop
 gameLoop.setAIStates(aiStates);
