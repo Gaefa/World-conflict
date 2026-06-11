@@ -17,6 +17,7 @@ import { GoalsPanel } from '@/components/ui/GoalsPanel';
 import { VictoryOverlay } from '@/components/ui/VictoryOverlay';
 import { Leaderboard } from '@/components/panels/Leaderboard';
 import { useGameStore } from '@/stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useLocaleStore } from '@/stores/localeStore';
 import { useCountries } from '@/hooks/useCountries';
 
@@ -43,7 +44,22 @@ export default function Home() {
     togglePause,
     playerId,
     canSave,
-  } = useGameStore();
+  } = useGameStore(useShallow(s => ({
+    gameState: s.gameState,
+    currentTick: s.currentTick,
+    tensionIndex: s.tensionIndex,
+    tickDurationMs: s.tickDurationMs,
+    lastTickAt: s.lastTickAt,
+    selectedCountryCode: s.selectedCountryCode,
+    isPaused: s.isPaused,
+    sessionId: s.sessionId,
+    connected: s.connected,
+    setSelectedCountry: s.setSelectedCountry,
+    sendAction: s.sendAction,
+    togglePause: s.togglePause,
+    playerId: s.playerId,
+    canSave: s.canSave,
+  })));
 
   const { data: seedCountries } = useCountries();
 

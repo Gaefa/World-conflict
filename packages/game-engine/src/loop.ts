@@ -109,6 +109,7 @@ export class GameLoop {
       clearInterval(id);
       this.intervals.delete(sessionId);
       this.sessionRngs.delete(sessionId);
+      this.sessionTickMs.delete(sessionId);
       clearSessionQueue(sessionId);
       console.log(`[GameLoop] Stopped session ${sessionId}`);
     }
