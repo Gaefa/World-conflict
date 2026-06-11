@@ -293,6 +293,8 @@ export interface Translations {
   inbox_proposal_alliance: string;
   inbox_proposal_trade: string;
   inbox_proposal_peace: string;
+  outcome_accepted: string;
+  outcome_rejected: string;
 
   // ── Intelligence tab ──
   intel_sub_overview: string;

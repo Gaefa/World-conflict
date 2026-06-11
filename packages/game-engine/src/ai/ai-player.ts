@@ -256,6 +256,35 @@ function computeMilitaryActions(
       actions.push({ type: 'propose_peace', targetCountry: enemy });
     }
 
+    // March idle armies toward the enemy
+    const enemySeed = SEED_COUNTRIES.find(c => c.code === enemy);
+    if (enemySeed) {
+      for (const army of state.armies) {
+        if (army.ownerCountry === aiState.countryCode && army.status === 'idle') {
+          actions.push({
+            type: 'move_army',
+            armyId: army.id,
+            targetLat: enemySeed.latitude,
+            targetLng: enemySeed.longitude,
+          });
+        }
+      }
+    }
+
+    // Reinforce: keep building armies while at war
+    const myArmies = state.armies.filter(a => a.ownerCountry === aiState.countryCode).length;
+    if (myArmies < 3 && rng() < 0.4 * diff) {
+      const homeSeed = SEED_COUNTRIES.find(c => c.code === aiState.countryCode);
+      actions.push({
+        type: 'create_army',
+        armyType: 'infantry',
+        name: `${aiState.countryCode}-force-${state.session.currentTick}`,
+        size: Math.floor(15000 * diff),
+        latitude: homeSeed?.latitude ?? 0,
+        longitude: homeSeed?.longitude ?? 0,
+      });
+    }
+
     return actions;
   }
 

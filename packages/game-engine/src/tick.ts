@@ -30,6 +30,7 @@ import {
   processIntelTick,
   applyFog,
   processTechTick,
+  processMilitaryTick,
 } from '@conflict-game/game-logic';
 import type { RNG } from '@conflict-game/game-logic';
 import { computeAIActions } from './ai/index';
@@ -122,6 +123,10 @@ export function runTick(input: TickInput): TickOutput {
   // 0.7. Technology tick
   const techResult = processTechTick(state);
   newEvents.push(...techResult.events);
+
+  // 0.8. Military tick: army maintenance, movement, battles
+  const milResult = processMilitaryTick(state, rng);
+  newEvents.push(...milResult.events);
 
   // Per-country: economy + sanctions + stability + indexOfPower
   for (const [code, country] of Object.entries(state.countries)) {
@@ -302,6 +307,7 @@ export function computePlayerDelta(
   return {
     tick: state.session.currentTick,
     countries: foggedDeltas,
+    armies: state.armies,
     relations: state.relations,
     events: playerEvents.length > 0 ? playerEvents : undefined,
     tensionIndex: state.tensionIndex,

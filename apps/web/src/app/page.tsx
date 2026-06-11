@@ -11,6 +11,7 @@ import { SaveLoadModal } from '@/components/ui/SaveLoadModal';
 import { PriceTicker } from '@/components/ui/PriceTicker';
 import { ActionToast } from '@/components/ui/ActionToast';
 import { ProposalInbox } from '@/components/ui/ProposalInbox';
+import { ProposalOutcomeToast } from '@/components/ui/ProposalOutcomeToast';
 import { LocalePicker } from '@/components/ui/LocalePicker';
 import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
 import { GoalsPanel } from '@/components/ui/GoalsPanel';
@@ -329,12 +330,17 @@ export default function Home() {
 
       {/* Floating proposal inbox — shows incoming AI proposals without opening Diplomacy tab */}
       {gameState?.session.status === 'active' && playerCountryCode && gameState.relations && (
-        <ProposalInbox
-          playerCountryCode={playerCountryCode}
-          relations={gameState.relations}
-          countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
-          onAction={sendAction}
-        />
+        <>
+          <ProposalInbox
+            playerCountryCode={playerCountryCode}
+            relations={gameState.relations}
+            countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
+            onAction={sendAction}
+          />
+          <ProposalOutcomeToast
+            countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
+          />
+        </>
       )}
 
       {modalMode && (

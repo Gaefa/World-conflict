@@ -351,6 +351,10 @@ export function processProposalResponse(
     };
   } else {
     relation.status = 'rejected';
+    addEvent(state, 'diplomatic_incident',
+      `${relation.toCountry} rejects ${relation.type} from ${relation.fromCountry}`,
+      `${relation.toCountry} has rejected the ${relation.type} proposal.`,
+      'low', [relation.fromCountry, relation.toCountry]);
     return {
       success: true, action,
       message: `${relation.type} from ${relation.fromCountry} rejected`,

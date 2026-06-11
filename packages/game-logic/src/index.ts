@@ -1,5 +1,6 @@
 export * from './economy/index';
 export * from './military/index';
+export * from './military/military-tick';
 export * from './diplomacy/index';
 export * from './stability/index';
 export * from './power-index';

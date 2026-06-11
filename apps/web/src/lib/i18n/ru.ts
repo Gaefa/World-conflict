@@ -292,6 +292,8 @@ export const ru: Translations = {
   inbox_proposal_alliance: 'Предложение альянса',
   inbox_proposal_trade: 'Торговое предложение',
   inbox_proposal_peace: 'Предложение мира',
+  outcome_accepted: '{country}: предложение принято',
+  outcome_rejected: '{country}: предложение отклонено',
 
   // Intelligence tab
   intel_sub_overview: 'Обзор',

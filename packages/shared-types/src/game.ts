@@ -67,7 +67,8 @@ export interface GameState {
 export interface GameStateDelta {
   tick: number;
   countries?: Partial<Record<string, Partial<CountryState>>>;
-  armies?: ArmyDelta[];
+  /** Full army list snapshot (armies are few; simpler than per-field deltas). */
+  armies?: Army[];
   relations?: DiplomaticRelation[];
   events?: GameEvent[];
   tensionIndex?: number;

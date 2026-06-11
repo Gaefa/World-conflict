@@ -292,6 +292,8 @@ export const en: Translations = {
   inbox_proposal_alliance: 'Alliance Proposal',
   inbox_proposal_trade: 'Trade Proposal',
   inbox_proposal_peace: 'Peace Proposal',
+  outcome_accepted: '{country} accepted your proposal',
+  outcome_rejected: '{country} rejected your proposal',
 
   // Intelligence tab
   intel_sub_overview: 'Overview',

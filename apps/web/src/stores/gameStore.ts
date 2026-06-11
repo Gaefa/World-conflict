@@ -1,10 +1,19 @@
 'use client';
 
 import { create } from 'zustand';
-import type { GameState, GameStateDelta, PlayerAction, ActionResult } from '@conflict-game/shared-types';
+import type { GameState, GameStateDelta, PlayerAction, ActionResult, DiplomacyType } from '@conflict-game/shared-types';
 import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
 import { WebSocketTransport, InMemoryTransport, type GameTransport } from '@/lib/transport';
 import { saveGame as idbSaveGame, loadGame as idbLoadGame, type SaveSnapshot } from '@/lib/save-store';
+
+/** Outcome of one of the player's outgoing proposals (AI accepted/rejected it). */
+export interface ProposalOutcome {
+  id: string;          // relation id — unique per proposal
+  type: DiplomacyType;
+  country: string;     // who answered
+  accepted: boolean;
+  tick: number;
+}
 
 interface GameStore {
   // Connection
@@ -26,6 +35,9 @@ interface GameStore {
   selectedCountryCode: string | null;
   isPaused: boolean;
   lastActionResult: ActionResult | null;
+  /** Recent answers to the player's outgoing proposals (for toast display). */
+  proposalOutcomes: ProposalOutcome[];
+  dismissProposalOutcome: (id: string) => void;
 
   // Actions
   setTransport: (transport: GameTransport) => void;
@@ -60,7 +72,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedCountryCode: null,
   isPaused: false,
   lastActionResult: null,
+  proposalOutcomes: [],
   canSave: false,
+
+  dismissProposalOutcome: (id) => {
+    set({ proposalOutcomes: get().proposalOutcomes.filter(o => o.id !== id) });
+  },
 
   setTransport: (transport) => {
     // Swap transports — used when switching between multiplayer and singleplayer.
@@ -207,9 +224,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
       newState.countries = newCountries;
     }
 
-    // Update relations
+    // Update relations + detect answers to the player's outgoing proposals
+    let newOutcomes = get().proposalOutcomes;
     if (delta.relations) {
+      const playerCode = gameState.players.find(p => p.id === get().playerId)?.countryCode;
+      if (playerCode) {
+        const detected: ProposalOutcome[] = [];
+        for (const r of delta.relations) {
+          if (r.fromCountry !== playerCode) continue;
+          const old = gameState.relations.find(p => p.id === r.id);
+          if (!old || old.status !== 'proposed') continue;
+          // Peace proposals expire on acceptance instead of going active
+          if (r.status === 'active' || (r.status === 'expired' && r.type === 'non_aggression')) {
+            detected.push({ id: r.id, type: r.type, country: r.toCountry, accepted: true, tick: delta.tick });
+          } else if (r.status === 'rejected') {
+            detected.push({ id: r.id, type: r.type, country: r.toCountry, accepted: false, tick: delta.tick });
+          }
+        }
+        if (detected.length > 0) {
+          newOutcomes = [...newOutcomes, ...detected].slice(-5);
+        }
+      }
       newState.relations = delta.relations;
+    }
+
+    // Sync armies (full snapshot each tick)
+    if (delta.armies) {
+      newState.armies = delta.armies;
     }
 
     // Append events
@@ -234,6 +275,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       tensionIndex: delta.tensionIndex ?? get().tensionIndex,
       tickDurationMs: delta.tickDurationMs ?? get().tickDurationMs,
       lastTickAt: delta.tickEmittedAt ?? Date.now(),
+      proposalOutcomes: newOutcomes,
     });
   },
 }));
