@@ -50,6 +50,13 @@ function localizeActionMessage(t: Translations, ar: ActionResult): string {
       return t.res_arms_deal.replace('{country}', a.targetCountry);
     case 'propose_sanction':
       return t.res_sanction.replace('{country}', a.targetCountry);
+    case 'create_army':
+      return t.res_army_created.replace('{size}', a.size.toLocaleString());
+    case 'build_stockpile':
+      return t.res_stockpile_built.replace(
+        '{resource}',
+        (t as unknown as Record<string, string>)[`rlabel_${a.resource}`] ?? a.resource,
+      );
     default:
       return ar.success ? t.res_generic_ok : (ar.message || t.res_generic_fail);
   }

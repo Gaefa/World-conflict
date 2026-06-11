@@ -323,7 +323,7 @@ export const ru: Translations = {
   card_name_mobilize: 'Мобилизация',
   card_desc_mobilize: '25 тыс. призывников дома',
   card_name_armored_army: 'Танковый корпус',
-  card_desc_armored_army: '5 тыс. машин — бьёт больно',
+  card_desc_armored_army: '3 тыс. машин — бьёт больно',
   card_name_drone_raid: 'Рейд дронов',
   card_desc_drone_raid: 'Удар по военным объектам',
   card_name_airstrike: 'Точечный удар',
@@ -615,6 +615,10 @@ export const ru: Translations = {
   ev_desc_stockpile_depleted: 'Стратегический резерв {resource} страны {country} исчерпан!',
   ev_desc_trade_disrupted: 'Торговый маршрут {a}–{b} нарушен санкциями!',
   ev_desc_contraband: 'Контрабандный маршрут {a}–{b} обнаружен и закрыт!',
+  ev_desc_battle: '{winner} выиграл сражение. Потери атакующего: {attackerLosses}, обороняющегося: {defenderLosses}.',
+  ev_desc_army_destroyed: '{army} ({country}) разбита или обращена в бегство.',
+  res_army_created: 'Сформирована армия: {size} чел.',
+  res_stockpile_built: 'Стратегический резерв: {resource}',
 
   // Панель целей
   goals_title: 'Цели',

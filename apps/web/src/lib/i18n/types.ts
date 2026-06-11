@@ -618,6 +618,10 @@ export interface Translations {
   ev_desc_stockpile_depleted: string;
   ev_desc_trade_disrupted: string;
   ev_desc_contraband: string;
+  ev_desc_battle: string;
+  ev_desc_army_destroyed: string;
+  res_army_created: string;
+  res_stockpile_built: string;
 
   // ── Goals panel ──
   goals_title: string;

@@ -46,6 +46,8 @@ export function CardHand({
     const def = CARD_BY_ID[cardId];
     if (!def) return;
     if (cardEnergy < def.energy) return;
+    const cost = def.budgetCost?.(country);
+    if (cost !== undefined && country.economy.budget < cost) return;
 
     if (def.needsTarget && !target) {
       setHint(t.cards_need_target);
@@ -92,7 +94,9 @@ export function CardHand({
         {cardHand.map((cardId) => {
           const def = CARD_BY_ID[cardId];
           if (!def) return null;
-          const affordable = cardEnergy >= def.energy;
+          const cost = def.budgetCost?.(country);
+          const hasBudget = cost === undefined || country.economy.budget >= cost;
+          const affordable = cardEnergy >= def.energy && hasBudget;
           const style = CATEGORY_STYLE[def.category];
           const targetName = def.needsTarget && target ? countryNames[target] ?? target : null;
 
@@ -101,7 +105,7 @@ export function CardHand({
               key={cardId}
               onClick={() => play(cardId)}
               disabled={!affordable}
-              className={`group w-[118px] bg-bg-secondary border ${style.border} rounded-lg p-2 text-left transition-all cursor-pointer
+              className={`group w-[118px] bg-bg-secondary border ${style.border} rounded-lg p-2 text-left transition-all cursor-pointer animate-slide-up
                 ${affordable ? 'hover:-translate-y-2 hover:shadow-lg' : 'opacity-45 cursor-not-allowed'}`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -116,6 +120,11 @@ export function CardHand({
               <div className="text-text-muted text-[10px] leading-snug min-h-[26px]">
                 {cardDesc(t, cardId)}
               </div>
+              {cost !== undefined && (
+                <div className={`text-[9px] font-mono mt-0.5 ${hasBudget ? 'text-text-secondary' : 'text-severity-high'}`}>
+                  ${cost % 1 === 0 ? cost.toFixed(0) : cost.toFixed(1)}B
+                </div>
+              )}
               {def.needsTarget && (
                 <div className={`text-[9px] mt-1 truncate ${targetName ? style.text : 'text-text-muted italic'}`}>
                   {targetName ? `→ ${targetName}` : t.cards_pick_target}

@@ -323,7 +323,7 @@ export const en: Translations = {
   card_name_mobilize: 'Mobilization',
   card_desc_mobilize: '25K conscripts at home',
   card_name_armored_army: 'Armored corps',
-  card_desc_armored_army: '5K tanks — hits hard',
+  card_desc_armored_army: '3K tanks — hits hard',
   card_name_drone_raid: 'Drone raid',
   card_desc_drone_raid: 'Strike military targets',
   card_name_airstrike: 'Surgical strike',
@@ -614,6 +614,10 @@ export const en: Translations = {
   ev_desc_stockpile_depleted: '{country} strategic reserve of {resource} is depleted!',
   ev_desc_trade_disrupted: 'Trade route between {a} and {b} disrupted by sanctions!',
   ev_desc_contraband: 'Contraband route between {a} and {b} has been discovered!',
+  ev_desc_battle: '{winner} won the engagement. Attacker lost {attackerLosses}, defender lost {defenderLosses}.',
+  ev_desc_army_destroyed: '{army} ({country}) has been wiped out or routed.',
+  res_army_created: 'Army of {size} formed',
+  res_stockpile_built: 'Strategic reserve: {resource}',
 
   // Goals panel
   goals_title: 'Goals',

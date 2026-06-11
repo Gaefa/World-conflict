@@ -81,6 +81,19 @@ function localizeEventDescription(
           .replace('{b}', name(data.b));
       }
       break;
+    case 'battle_result':
+      if (data.destroyedArmy) {
+        return t.ev_desc_army_destroyed
+          .replace('{army}', String(data.destroyedArmy))
+          .replace('{country}', name(data.owner));
+      }
+      if (data.winner) {
+        return t.ev_desc_battle
+          .replace('{winner}', name(data.winner))
+          .replace('{attackerLosses}', String(data.attackerLosses ?? 0))
+          .replace('{defenderLosses}', String(data.defenderLosses ?? 0));
+      }
+      break;
   }
 
   // Fallback: replace bare country codes (2-3 uppercase letters) with names

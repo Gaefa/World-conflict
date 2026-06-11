@@ -1,4 +1,5 @@
 import type { CountryState, PlayerAction, ResourceType } from '@conflict-game/shared-types';
+import { scaledCost } from './actionCosts';
 
 /**
  * Card system (v0.7 prototype) — a curated UI layer over the existing
@@ -30,6 +31,11 @@ export interface CardDef {
   category: CardCategory;
   needsTarget: boolean;
   unlock: 'base' | 'war' | { tech: string };
+  /**
+   * Budget cost in $B (mirrors engine formulas) — card is disabled when the
+   * player can't afford it, so a play never burns energy on a failed action.
+   */
+  budgetCost?: (country: CountryState) => number;
   /** Build the action. Returns null if context is insufficient. */
   build: (ctx: CardCtx) => PlayerAction | null;
 }
@@ -68,6 +74,7 @@ export const CARDS: CardDef[] = [
   // ── Base deck ──
   {
     id: 'recruit', energy: 1, icon: '🪖', category: 'military', needsTarget: false, unlock: 'base',
+    budgetCost: () => 10, // 10K infantry × $1K
     build: (ctx) => ctx.home ? {
       type: 'create_army', armyType: 'infantry', size: 10_000,
       name: `Division-${Date.now() % 10000}`,
@@ -76,10 +83,12 @@ export const CARDS: CardDef[] = [
   },
   {
     id: 'invest', energy: 1, icon: '🏗️', category: 'economy', needsTarget: false, unlock: 'base',
+    budgetCost: () => 10,
     build: () => ({ type: 'allocate_budget', category: 'economy', amount: 10 }),
   },
   {
     id: 'social', energy: 1, icon: '🏥', category: 'economy', needsTarget: false, unlock: 'base',
+    budgetCost: () => 5,
     build: () => ({ type: 'allocate_budget', category: 'social', amount: 5 }),
   },
   {
@@ -116,6 +125,7 @@ export const CARDS: CardDef[] = [
   },
   {
     id: 'mobilize', energy: 2, icon: '📯', category: 'military', needsTarget: false, unlock: 'war',
+    budgetCost: () => 25, // 25K infantry × $1K
     build: (ctx) => ctx.home ? {
       type: 'create_army', armyType: 'infantry', size: 25_000,
       name: `Mobilized-${Date.now() % 10000}`,
@@ -127,8 +137,9 @@ export const CARDS: CardDef[] = [
   {
     id: 'armored_army', energy: 2, icon: '🛡️', category: 'military', needsTarget: false,
     unlock: { tech: 'mil_2' },
+    budgetCost: () => 30, // 3K vehicles × $10M
     build: (ctx) => ctx.home ? {
-      type: 'create_army', armyType: 'armored', size: 5_000,
+      type: 'create_army', armyType: 'armored', size: 3_000,
       name: `Armored-${Date.now() % 10000}`,
       latitude: ctx.home.lat, longitude: ctx.home.lng,
     } : null,
@@ -136,21 +147,25 @@ export const CARDS: CardDef[] = [
   {
     id: 'drone_raid', energy: 2, icon: '🛩️', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_3' },
+    budgetCost: (c) => scaledCost(3, c.economy.gdp),
     build: (ctx) => ctx.target ? { type: 'drone_raid', targetCountry: ctx.target, target: 'military' } : null,
   },
   {
     id: 'airstrike', energy: 2, icon: '✈️', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_5' },
+    budgetCost: (c) => scaledCost(2, c.economy.gdp),
     build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'surgical' } : null,
   },
   {
     id: 'blockade', energy: 2, icon: '⚓', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_6' },
+    budgetCost: (c) => scaledCost(5, c.economy.gdp),
     build: (ctx) => ctx.target ? { type: 'naval_blockade', targetCountry: ctx.target } : null,
   },
   {
     id: 'carpet_bombing', energy: 3, icon: '💥', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_7' },
+    budgetCost: (c) => scaledCost(20, c.economy.gdp),
     build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'carpet' } : null,
   },
   {
@@ -161,11 +176,13 @@ export const CARDS: CardDef[] = [
   {
     id: 'cyber_attack', energy: 2, icon: '💻', category: 'covert', needsTarget: true,
     unlock: { tech: 'cyber_3' },
+    budgetCost: () => 5,
     build: (ctx) => ctx.target ? { type: 'cyber_attack', targetCountry: ctx.target, target: 'infrastructure' } : null,
   },
   {
     id: 'incite', energy: 3, icon: '🔥', category: 'covert', needsTarget: true,
     unlock: { tech: 'intel_1' },
+    budgetCost: () => 8,
     build: (ctx) => ctx.target ? { type: 'incite_rebellion', targetCountry: ctx.target } : null,
   },
 ];
