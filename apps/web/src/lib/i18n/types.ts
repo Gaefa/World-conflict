@@ -296,6 +296,50 @@ export interface Translations {
   outcome_accepted: string;
   outcome_rejected: string;
 
+  // ── Card mode ──
+  cards_need_target: string;
+  cards_pick_target: string;
+  cards_empty: string;
+  cards_per_tick: string;
+  ui_mode_cards: string;
+  ui_mode_console: string;
+  card_name_recruit: string;
+  card_desc_recruit: string;
+  card_name_invest: string;
+  card_desc_invest: string;
+  card_name_social: string;
+  card_desc_social: string;
+  card_name_trade: string;
+  card_desc_trade: string;
+  card_name_alliance: string;
+  card_desc_alliance: string;
+  card_name_sanctions: string;
+  card_desc_sanctions: string;
+  card_name_stockpile: string;
+  card_desc_stockpile: string;
+  card_name_declare_war: string;
+  card_desc_declare_war: string;
+  card_name_peace: string;
+  card_desc_peace: string;
+  card_name_mobilize: string;
+  card_desc_mobilize: string;
+  card_name_armored_army: string;
+  card_desc_armored_army: string;
+  card_name_drone_raid: string;
+  card_desc_drone_raid: string;
+  card_name_airstrike: string;
+  card_desc_airstrike: string;
+  card_name_blockade: string;
+  card_desc_blockade: string;
+  card_name_carpet_bombing: string;
+  card_desc_carpet_bombing: string;
+  card_name_nuke_tactical: string;
+  card_desc_nuke_tactical: string;
+  card_name_cyber_attack: string;
+  card_desc_cyber_attack: string;
+  card_name_incite: string;
+  card_desc_incite: string;
+
   // ── Intelligence tab ──
   intel_sub_overview: string;
   intel_sub_dossiers: string;

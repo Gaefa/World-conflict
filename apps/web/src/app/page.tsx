@@ -17,9 +17,11 @@ import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
 import { GoalsPanel } from '@/components/ui/GoalsPanel';
 import { VictoryOverlay } from '@/components/ui/VictoryOverlay';
 import { Leaderboard } from '@/components/panels/Leaderboard';
+import { CardHand } from '@/components/cards/CardHand';
 import { useGameStore } from '@/stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useLocaleStore } from '@/stores/localeStore';
+import { useUiModeStore } from '@/stores/uiModeStore';
 import { useCountries } from '@/hooks/useCountries';
 
 export default function Home() {
@@ -63,8 +65,10 @@ export default function Home() {
   })));
 
   const { data: seedCountries } = useCountries();
+  const { mode: uiMode, setMode: setUiMode } = useUiModeStore();
 
   const playerCountryCode = gameState?.players.find(p => p.id === playerId)?.countryCode ?? null;
+  const countryNames = Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]));
 
   const handleCountryClick = useCallback(
     (code: string, name: string) => {
@@ -297,27 +301,53 @@ export default function Home() {
         <PriceTicker market={gameState.resourceMarket} />
       )}
 
-      <BottomTabs
-        country={bottomTabsCountry}
-        isNonPlayable={!gameState && selectedCountryStats?.isNonPlayable}
-        countryName={
-          gameState?.session.status === 'active'
-            ? seedCountries?.find(s => s.code === playerCountryCode)?.name || playerCountryCode || undefined
-            : selectedCountryStats?.name
-        }
-        onAction={sendAction}
-        targetCountryCode={selectedCountryCode}
-        playerCountryCode={playerCountryCode}
-        isGameActive={gameState?.session.status === 'active'}
-        hasSanctions={!!playerCountryCode && !!gameState?.relations.some(
-          r => r.toCountry === playerCountryCode && r.type === 'sanction' && r.status === 'active'
-        )}
-        relations={gameState?.relations}
-        currentTick={currentTick}
-        armies={gameState?.armies}
-        allCountries={gameState?.countries}
-        warCountries={warCountries}
-      />
+      {/* Cards mode (default): hand of action cards. Console mode (hardcore): full tabs. */}
+      {uiMode === 'cards' && gameState?.session.status === 'active' && playerCountryCode && gameState.countries[playerCountryCode] ? (
+        <CardHand
+          country={gameState.countries[playerCountryCode]}
+          selectedCountryCode={selectedCountryCode}
+          playerCountryCode={playerCountryCode}
+          home={(() => {
+            const seed = seedCountries?.find(s => s.code === playerCountryCode);
+            return seed ? { lat: seed.latitude, lng: seed.longitude } : null;
+          })()}
+          warEnemies={[...warCountries]}
+          onAction={sendAction}
+          countryNames={countryNames}
+        />
+      ) : (
+        <BottomTabs
+          country={bottomTabsCountry}
+          isNonPlayable={!gameState && selectedCountryStats?.isNonPlayable}
+          countryName={
+            gameState?.session.status === 'active'
+              ? seedCountries?.find(s => s.code === playerCountryCode)?.name || playerCountryCode || undefined
+              : selectedCountryStats?.name
+          }
+          onAction={sendAction}
+          targetCountryCode={selectedCountryCode}
+          playerCountryCode={playerCountryCode}
+          isGameActive={gameState?.session.status === 'active'}
+          hasSanctions={!!playerCountryCode && !!gameState?.relations.some(
+            r => r.toCountry === playerCountryCode && r.type === 'sanction' && r.status === 'active'
+          )}
+          relations={gameState?.relations}
+          currentTick={currentTick}
+          armies={gameState?.armies}
+          allCountries={gameState?.countries}
+          warCountries={warCountries}
+        />
+      )}
+
+      {/* UI mode toggle — only during an active game */}
+      {gameState?.session.status === 'active' && playerCountryCode && (
+        <button
+          onClick={() => setUiMode(uiMode === 'cards' ? 'console' : 'cards')}
+          className="fixed bottom-3 right-3 z-40 bg-bg-secondary border border-border-default hover:border-accent-amber/60 text-text-secondary hover:text-text-primary text-xs px-3 py-1.5 rounded transition-colors cursor-pointer"
+        >
+          {uiMode === 'cards' ? t.ui_mode_console : t.ui_mode_cards}
+        </button>
+      )}
 
       {/* Leaderboard (top-right corner during active game) */}
       {gameState?.session.status === 'active' && leaderboardEntries.length > 0 && (
@@ -334,12 +364,10 @@ export default function Home() {
           <ProposalInbox
             playerCountryCode={playerCountryCode}
             relations={gameState.relations}
-            countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
+            countryNames={countryNames}
             onAction={sendAction}
           />
-          <ProposalOutcomeToast
-            countryNames={Object.fromEntries((seedCountries ?? []).map(c => [c.code, c.name]))}
-          />
+          <ProposalOutcomeToast countryNames={countryNames} />
         </>
       )}
 

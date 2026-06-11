@@ -212,6 +212,13 @@ export function runTick(input: TickInput): TickOutput {
     };
   }
 
+  // 4.5. Expire stale proposals (unanswered for 15+ ticks)
+  for (const rel of state.relations) {
+    if (rel.status === 'proposed' && tick - rel.createdAtTick > 15) {
+      rel.status = 'expired';
+    }
+  }
+
   // 5. Global tension
   const avgStability =
     Object.values(state.countries).reduce((s, c) => s + c.stability, 0) /

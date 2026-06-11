@@ -316,7 +316,7 @@ export function processProposalResponse(
     if (isPeace) {
       const warRel = state.relations.find(r => r.id === warRelationId);
       if (warRel) warRel.status = 'expired';
-      relation.status = 'expired'; // the proposal itself expires
+      relation.status = 'active'; // accepted peace becomes an active non-aggression pact
       for (const code of [relation.fromCountry, relation.toCountry]) {
         const c = state.countries[code];
         if (c) {

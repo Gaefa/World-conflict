@@ -43,6 +43,10 @@ export function ProposalInbox({ playerCountryCode, relations, countryNames, onAc
 
   if (incoming.length === 0) return null;
 
+  // Cap visible cards so a flood of AI proposals doesn't cover the screen
+  const visible = incoming.slice(0, 3);
+  const hiddenCount = incoming.length - visible.length;
+
   function accept(id: string) {
     onAction({ type: 'accept_proposal', relationId: id } as PlayerAction);
   }
@@ -53,7 +57,12 @@ export function ProposalInbox({ playerCountryCode, relations, countryNames, onAc
 
   return (
     <div className="fixed right-4 bottom-[260px] z-40 flex flex-col gap-2 max-w-[240px]">
-      {incoming.map(r => {
+      {hiddenCount > 0 && (
+        <div className="text-center text-text-muted text-xs bg-bg-secondary/80 border border-border-default rounded px-2 py-1">
+          +{hiddenCount}
+        </div>
+      )}
+      {visible.map(r => {
         const fromName = countryNames[r.fromCountry] ?? r.fromCountry;
         const icon = ICONS[r.type] ?? '📨';
         const label = proposalLabel(t, r.type);

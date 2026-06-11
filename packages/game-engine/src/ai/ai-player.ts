@@ -353,6 +353,13 @@ function computeDiplomaticActions(
     const cooldown = 8 + Math.floor(rng() * 12); // 8–20 ticks between approaches
     if (currentTick - aiState.lastProposalToHumanTick < cooldown) continue;
 
+    // Don't pile on: with 29 AI countries even long per-AI cooldowns flood
+    // the human. Skip if they already have 2+ unanswered proposals.
+    const pendingToHuman = state.relations.filter(
+      r => r.toCountry === humanCode && r.status === 'proposed'
+    ).length;
+    if (pendingToHuman >= 2) continue;
+
     // Already have active or pending relation of the same type?
     const hasAlliance = state.relations.some(
       r => r.type === 'alliance' && r.status === 'active' &&
