@@ -14,6 +14,27 @@ import { scaledCost } from './actionCosts';
 
 export type CardCategory = 'military' | 'diplomacy' | 'economy' | 'covert';
 
+/**
+ * A non-budget prerequisite the engine enforces (diplomatic influence,
+ * naval vessels, aircraft, warheads). Mirrored here so a card is disabled
+ * up front instead of burning energy on a guaranteed-fail action.
+ */
+export type CardRequirement = {
+  kind: 'influence' | 'navy' | 'airforce' | 'warheads';
+  amount: number;
+};
+
+/** True when the acting country meets the card's non-budget requirement. */
+export function requirementMet(req: CardRequirement | undefined, country: CountryState): boolean {
+  if (!req) return true;
+  switch (req.kind) {
+    case 'influence': return country.diplomaticInfluence >= req.amount;
+    case 'navy': return country.military.navy >= req.amount;
+    case 'airforce': return country.military.airForce >= req.amount;
+    case 'warheads': return country.military.nuclearWeapons >= req.amount;
+  }
+}
+
 export interface CardCtx {
   /** Selected country on the globe (target). */
   target: string | null;
@@ -36,6 +57,8 @@ export interface CardDef {
    * player can't afford it, so a play never burns energy on a failed action.
    */
   budgetCost?: (country: CountryState) => number;
+  /** Non-budget prerequisite (influence / navy / aircraft / warheads). */
+  requirement?: CardRequirement;
   /** Build the action. Returns null if context is insufficient. */
   build: (ctx: CardCtx) => PlayerAction | null;
 }
@@ -93,6 +116,7 @@ export const CARDS: CardDef[] = [
   },
   {
     id: 'trade', energy: 1, icon: '📦', category: 'diplomacy', needsTarget: true, unlock: 'base',
+    requirement: { kind: 'influence', amount: 2 },
     build: (ctx) => ctx.target ? {
       type: 'propose_trade', targetCountry: ctx.target,
       offers: [{ resource: surplusResource(ctx.country), amount: 8 }],
@@ -101,10 +125,12 @@ export const CARDS: CardDef[] = [
   },
   {
     id: 'alliance', energy: 2, icon: '🤝', category: 'diplomacy', needsTarget: true, unlock: 'base',
+    requirement: { kind: 'influence', amount: 5 },
     build: (ctx) => ctx.target ? { type: 'propose_alliance', targetCountry: ctx.target } : null,
   },
   {
     id: 'sanctions', energy: 2, icon: '🚫', category: 'diplomacy', needsTarget: true, unlock: 'base',
+    requirement: { kind: 'influence', amount: 3 },
     build: (ctx) => ctx.target ? { type: 'propose_sanction', targetCountry: ctx.target } : null,
   },
   {
@@ -154,23 +180,27 @@ export const CARDS: CardDef[] = [
     id: 'airstrike', energy: 2, icon: '✈️', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_5' },
     budgetCost: (c) => scaledCost(2, c.economy.gdp),
+    requirement: { kind: 'airforce', amount: 10 },
     build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'surgical' } : null,
   },
   {
     id: 'blockade', energy: 2, icon: '⚓', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_6' },
     budgetCost: (c) => scaledCost(5, c.economy.gdp),
+    requirement: { kind: 'navy', amount: 20 },
     build: (ctx) => ctx.target ? { type: 'naval_blockade', targetCountry: ctx.target } : null,
   },
   {
     id: 'carpet_bombing', energy: 3, icon: '💥', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_7' },
     budgetCost: (c) => scaledCost(20, c.economy.gdp),
+    requirement: { kind: 'airforce', amount: 50 },
     build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'carpet' } : null,
   },
   {
     id: 'nuke_tactical', energy: 4, icon: '☢️', category: 'military', needsTarget: true,
     unlock: { tech: 'mil_9' },
+    requirement: { kind: 'warheads', amount: 1 },
     build: (ctx) => ctx.target ? { type: 'nuclear_strike', targetCountry: ctx.target, warhead: 'tactical' } : null,
   },
   {
@@ -183,15 +213,21 @@ export const CARDS: CardDef[] = [
     id: 'incite', energy: 3, icon: '🔥', category: 'covert', needsTarget: true,
     unlock: { tech: 'intel_1' },
     budgetCost: () => 8,
+    requirement: { kind: 'influence', amount: 3 },
     build: (ctx) => ctx.target ? { type: 'incite_rebellion', targetCountry: ctx.target } : null,
   },
 ];
 
 export const CARD_BY_ID: Record<string, CardDef> = Object.fromEntries(CARDS.map(c => [c.id, c]));
 
-export const MAX_ENERGY = 5;
-export const ENERGY_PER_TICK = 2;
-export const MAX_HAND = 5;
+/** The four domain lanes, each with its own deck + energy pool. */
+export const DOMAINS: CardCategory[] = ['military', 'economy', 'diplomacy', 'covert'];
+
+// Energy and hand limits are PER LANE (each domain is independent).
+export const MAX_ENERGY = 4;      // per lane; must be ≥ the priciest card (nuke = 4)
+export const ENERGY_PER_TICK = 1; // per lane, per tick
+export const START_ENERGY = 2;    // per lane at game start
+export const MAX_HAND = 2;        // cards visible per lane
 
 /** Cards available to draw given researched techs and war status. */
 export function availablePool(researchedTechs: string[], atWar: boolean): CardDef[] {
@@ -203,24 +239,18 @@ export function availablePool(researchedTechs: string[], atWar: boolean): CardDe
 }
 
 /**
- * Draw one card id from the pool, excluding ids already in hand.
- * At war, military cards are 3× more likely.
+ * Draw one card id for a specific domain lane, excluding ids already in
+ * that lane's hand. Uniform within the domain's available pool.
  */
 export function drawCard(
+  domain: CardCategory,
   researchedTechs: string[],
   atWar: boolean,
   hand: string[],
   rnd: () => number = Math.random,
 ): string | null {
-  const pool = availablePool(researchedTechs, atWar).filter(c => !hand.includes(c.id));
+  const pool = availablePool(researchedTechs, atWar)
+    .filter(c => c.category === domain && !hand.includes(c.id));
   if (pool.length === 0) return null;
-
-  const weights = pool.map(c => (atWar && c.category === 'military' ? 3 : 1));
-  const total = weights.reduce((s, w) => s + w, 0);
-  let roll = rnd() * total;
-  for (let i = 0; i < pool.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return pool[i].id;
-  }
-  return pool[pool.length - 1].id;
+  return pool[Math.floor(rnd() * pool.length)].id;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { CountryState, PlayerAction, DiplomaticRelation, Army } from '@conflict-game/shared-types';
 import { useLocaleStore } from '@/stores/localeStore';
 import {
@@ -47,16 +47,19 @@ export function BottomTabs({
 }: BottomTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
   const [showSecondary, setShowSecondary] = useState(false);
+  const [wasAtWar, setWasAtWar] = useState(false);
   const { t } = useLocaleStore();
 
   const isAtWar = (warCountries?.size ?? 0) > 0;
 
-  // Auto-open Military tab when war starts
-  useEffect(() => {
-    if (isAtWar && isGameActive) {
-      setActiveTab('Military');
-    }
-  }, [isAtWar, isGameActive]);
+  // Auto-open Military tab on the war-start transition (handled during render
+  // via the "adjust state on prop change" pattern — avoids setState-in-effect).
+  if (isAtWar && isGameActive && !wasAtWar) {
+    setWasAtWar(true);
+    setActiveTab('Military');
+  } else if (!isAtWar && wasAtWar) {
+    setWasAtWar(false);
+  }
 
   const canAct = isGameActive && playerCountryCode && country?.code === playerCountryCode && !!onAction;
 

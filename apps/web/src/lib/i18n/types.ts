@@ -300,7 +300,17 @@ export interface Translations {
   cards_need_target: string;
   cards_pick_target: string;
   cards_empty: string;
+  cards_lane_locked: string;
   cards_per_tick: string;
+  card_domain_military: string;
+  card_domain_economy: string;
+  card_domain_diplomacy: string;
+  card_domain_covert: string;
+  card_req_prefix: string;
+  card_req_influence: string;
+  card_req_navy: string;
+  card_req_airforce: string;
+  card_req_warheads: string;
   ui_mode_cards: string;
   ui_mode_console: string;
   card_name_recruit: string;

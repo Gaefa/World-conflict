@@ -13,8 +13,8 @@ interface TickTimerProps {
  * Resets automatically whenever `lastTickAt` changes (new tick arrived).
  */
 export function TickTimer({ tickDurationMs, lastTickAt, isPaused }: TickTimerProps) {
-  // Single counter to trigger re-renders; actual values are computed during render.
-  const [, setFrame] = useState(0);
+  // Track `now` in state — Date.now() is impure and may not be called during render.
+  const [now, setNow] = useState(() => Date.now());
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -25,14 +25,11 @@ export function TickTimer({ tickDurationMs, lastTickAt, isPaused }: TickTimerPro
     }
 
     const animate = () => {
-      const elapsed = Date.now() - lastTickAt;
-      if (elapsed < tickDurationMs) {
-        // Still counting down — schedule next frame
-        setFrame(f => f + 1);
+      const t = Date.now();
+      setNow(t);
+      if (t - lastTickAt < tickDurationMs) {
         rafRef.current = requestAnimationFrame(animate);
       } else {
-        // Tick has passed — one final render and stop
-        setFrame(f => f + 1);
         rafRef.current = null;
       }
     };
@@ -43,8 +40,7 @@ export function TickTimer({ tickDurationMs, lastTickAt, isPaused }: TickTimerPro
     };
   }, [lastTickAt, tickDurationMs, isPaused]);
 
-  // Compute display values during render — no separate state needed.
-  const elapsed = isPaused || lastTickAt === 0 ? 0 : Date.now() - lastTickAt;
+  const elapsed = isPaused || lastTickAt === 0 ? 0 : Math.max(0, now - lastTickAt);
   const progress = Math.min(elapsed / tickDurationMs, 1);
   const secs = Math.ceil(Math.max(0, tickDurationMs - elapsed) / 1000);
 

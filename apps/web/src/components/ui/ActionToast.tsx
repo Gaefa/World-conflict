@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useLocaleStore } from '@/stores/localeStore';
 import type { ActionResult } from '@conflict-game/shared-types';
@@ -67,19 +67,22 @@ export function ActionToast() {
   const { t } = useLocaleStore();
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(lastActionResult);
-  // Ref tracks the last result we've already shown — avoids listing `current`
-  // in the effect deps (which would re-trigger on the same tick).
-  const seenRef = useRef(lastActionResult);
+  const [seen, setSeen] = useState(lastActionResult);
 
+  // "Adjusting state on prop change" pattern — comparison during render is allowed
+  // and avoids the setState-in-effect cascade.
+  if (lastActionResult && lastActionResult !== seen) {
+    setSeen(lastActionResult);
+    setCurrent(lastActionResult);
+    setVisible(true);
+  }
+
+  // Effect now only manages the hide timer (callback-scoped setState is fine).
   useEffect(() => {
-    if (lastActionResult && lastActionResult !== seenRef.current) {
-      seenRef.current = lastActionResult;
-      setCurrent(lastActionResult);
-      setVisible(true);
-      const timer = setTimeout(() => setVisible(false), 6000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastActionResult]);
+    if (!visible) return;
+    const timer = setTimeout(() => setVisible(false), 6000);
+    return () => clearTimeout(timer);
+  }, [visible, current]);
 
   if (!visible || !current) return null;
 

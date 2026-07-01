@@ -405,7 +405,7 @@ function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode, ha
                 <span className="text-xs text-text-muted w-16 shrink-0">{t.intel_smuggle_resource}</span>
                 <select
                   value={smuggleRes}
-                  onChange={e => setSmuggleRes(e.target.value as any)}
+                  onChange={e => setSmuggleRes(e.target.value as import('@conflict-game/shared-types').ResourceType)}
                   className="flex-1 text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
                 >
                   {smuggleResources.map(r => (
@@ -417,7 +417,7 @@ function IntelCovertSub({ country, canAct, act, hasTarget, targetCountryCode, ha
                 <span className="text-xs text-text-muted w-16 shrink-0">{t.intel_smuggle_method}</span>
                 <select
                   value={smuggleMethod}
-                  onChange={e => setSmuggleMethod(e.target.value as any)}
+                  onChange={e => setSmuggleMethod(e.target.value as 'land_border' | 'sea_route' | 'intermediary_country' | 'diplomatic_pouch')}
                   className="flex-1 text-xs bg-bg-card border border-border-default rounded px-1 py-0.5 text-text-primary"
                 >
                   {smuggleMethods.map(m => (
