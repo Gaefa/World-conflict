@@ -300,6 +300,7 @@ export const ru: Translations = {
   cards_pick_target: 'выберите цель на глобусе',
   cards_empty: 'Нет карт — добор каждый ход',
   cards_lane_locked: 'Исследуйте эту ветку, чтобы открыть карты',
+  cards_discard: 'Сбросить — добор новой карты на след. ходу',
   cards_per_tick: 'ход',
   card_domain_military: 'Военные',
   card_domain_economy: 'Экономика',

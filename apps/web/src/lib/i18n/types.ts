@@ -301,6 +301,7 @@ export interface Translations {
   cards_pick_target: string;
   cards_empty: string;
   cards_lane_locked: string;
+  cards_discard: string;
   cards_per_tick: string;
   card_domain_military: string;
   card_domain_economy: string;

@@ -53,6 +53,7 @@ export function CardHand({
   const laneEnergy = useGameStore((s) => s.laneEnergy);
   const laneHands = useGameStore((s) => s.laneHands);
   const consumeCard = useGameStore((s) => s.consumeCard);
+  const discardCard = useGameStore((s) => s.discardCard);
   const [hint, setHint] = useState<string | null>(null);
 
   const target = selectedCountryCode !== playerCountryCode ? selectedCountryCode : null;
@@ -133,9 +134,19 @@ export function CardHand({
                       key={cardId}
                       onClick={() => play(cardId, domain)}
                       disabled={!affordable}
-                      className={`group w-[104px] bg-bg-secondary border ${style.border} rounded-lg p-1.5 text-left transition-all cursor-pointer animate-slide-up
+                      className={`group relative w-[104px] bg-bg-secondary border ${style.border} rounded-lg p-1.5 text-left transition-all cursor-pointer animate-slide-up
                         ${affordable ? 'hover:-translate-y-2 hover:shadow-lg' : 'opacity-45 cursor-not-allowed'}`}
                     >
+                      {/* Discard: frees the slot to redraw next tick */}
+                      <span
+                        role="button"
+                        aria-label={t.cards_discard}
+                        title={t.cards_discard}
+                        onClick={(e) => { e.stopPropagation(); discardCard(cardId, domain); }}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-bg-card border border-border-default text-text-muted hover:text-text-primary hover:border-accent-amber/60 flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      >
+                        ↻
+                      </span>
                       <div className="flex items-center justify-between mb-0.5">
                         <span className={`w-4 h-4 rounded-full bg-bg-card flex items-center justify-center text-[10px] font-bold ${style.text}`}>
                           {def.energy}

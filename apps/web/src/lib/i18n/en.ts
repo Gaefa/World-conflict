@@ -300,6 +300,7 @@ export const en: Translations = {
   cards_pick_target: 'pick target on globe',
   cards_empty: 'No cards — you draw one every turn',
   cards_lane_locked: 'Research this branch to unlock cards',
+  cards_discard: 'Discard — draw a new card next turn',
   cards_per_tick: 'turn',
   card_domain_military: 'Military',
   card_domain_economy: 'Economy',

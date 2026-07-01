@@ -224,10 +224,16 @@ export const CARD_BY_ID: Record<string, CardDef> = Object.fromEntries(CARDS.map(
 export const DOMAINS: CardCategory[] = ['military', 'economy', 'diplomacy', 'covert'];
 
 // Energy and hand limits are PER LANE (each domain is independent).
-export const MAX_ENERGY = 4;      // per lane; must be ≥ the priciest card (nuke = 4)
-export const ENERGY_PER_TICK = 1; // per lane, per tick
-export const START_ENERGY = 2;    // per lane at game start
-export const MAX_HAND = 2;        // cards visible per lane
+export const MAX_ENERGY = 4;        // per lane; must be ≥ the priciest card (nuke = 4)
+export const ENERGY_PER_TICK = 1;   // per lane, per tick
+export const WAR_MILITARY_REGEN = 2; // military lane regen while at war (war economy)
+export const START_ENERGY = 3;      // per lane at game start
+export const MAX_HAND = 2;          // cards visible per lane
+
+/** Per-lane energy regen for this tick, given war status (war economy boost). */
+export function laneRegen(domain: CardCategory, atWar: boolean): number {
+  return domain === 'military' && atWar ? WAR_MILITARY_REGEN : ENERGY_PER_TICK;
+}
 
 /** Cards available to draw given researched techs and war status. */
 export function availablePool(researchedTechs: string[], atWar: boolean): CardDef[] {

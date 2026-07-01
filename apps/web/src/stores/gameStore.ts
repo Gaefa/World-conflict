@@ -5,7 +5,7 @@ import type { GameState, GameStateDelta, PlayerAction, ActionResult, DiplomacyTy
 import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
 import { WebSocketTransport, InMemoryTransport, type GameTransport } from '@/lib/transport';
 import { saveGame as idbSaveGame, type SaveSnapshot } from '@/lib/save-store';
-import { drawCard, DOMAINS, MAX_ENERGY, ENERGY_PER_TICK, START_ENERGY, MAX_HAND, type CardCategory } from '@/lib/cards';
+import { drawCard, laneRegen, DOMAINS, MAX_ENERGY, START_ENERGY, MAX_HAND, type CardCategory } from '@/lib/cards';
 
 type LaneState = Record<CardCategory, number>;
 type LaneHands = Record<CardCategory, string[]>;
@@ -48,6 +48,8 @@ interface GameStore {
   laneHands: LaneHands;
   /** Deduct energy from the card's lane and discard it after the action was sent. */
   consumeCard: (cardId: string, energy: number, domain: CardCategory) => void;
+  /** Discard a card without playing it — frees the slot to redraw next tick. */
+  discardCard: (cardId: string, domain: CardCategory) => void;
   /** Reset lanes and draw an opening hand per domain (call on game start/load). */
   initCards: () => void;
 
@@ -100,6 +102,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     laneHands[domain] = laneHands[domain].filter(id => id !== cardId);
     laneEnergy[domain] = Math.max(0, laneEnergy[domain] - energy);
     set({ laneHands, laneEnergy });
+  },
+
+  discardCard: (cardId, domain) => {
+    const laneHands = { ...get().laneHands };
+    laneHands[domain] = laneHands[domain].filter(id => id !== cardId);
+    set({ laneHands });
   },
 
   initCards: () => {
@@ -317,7 +325,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         (r.fromCountry === playerCodeForCards || r.toCountry === playerCodeForCards)
       );
       for (const d of DOMAINS) {
-        laneEnergy[d] = Math.min(MAX_ENERGY, laneEnergy[d] + ENERGY_PER_TICK);
+        laneEnergy[d] = Math.min(MAX_ENERGY, laneEnergy[d] + laneRegen(d, atWar));
         if (laneHands[d].length < MAX_HAND) {
           const drawn = drawCard(d, techs, atWar, laneHands[d]);
           if (drawn) laneHands[d] = [...laneHands[d], drawn];
