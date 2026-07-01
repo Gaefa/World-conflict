@@ -1,5 +1,6 @@
 import type { CountryState, PlayerAction, ResourceType } from '@conflict-game/shared-types';
 import { scaledCost } from './actionCosts';
+import cardData from './cards.json';
 
 /**
  * Card system (v0.7 prototype) — a curated UI layer over the existing
@@ -93,130 +94,82 @@ function deficitResource(country: CountryState): ResourceType {
   return best;
 }
 
-export const CARDS: CardDef[] = [
-  // ── Base deck ──
-  {
-    id: 'recruit', energy: 1, icon: '🪖', category: 'military', needsTarget: false, unlock: 'base',
-    budgetCost: () => 10, // 10K infantry × $1K
-    build: (ctx) => ctx.home ? {
-      type: 'create_army', armyType: 'infantry', size: 10_000,
-      name: `Division-${Date.now() % 10000}`,
-      latitude: ctx.home.lat, longitude: ctx.home.lng,
-    } : null,
-  },
-  {
-    id: 'invest', energy: 1, icon: '🏗️', category: 'economy', needsTarget: false, unlock: 'base',
-    budgetCost: () => 10,
-    build: () => ({ type: 'allocate_budget', category: 'economy', amount: 10 }),
-  },
-  {
-    id: 'social', energy: 1, icon: '🏥', category: 'economy', needsTarget: false, unlock: 'base',
-    budgetCost: () => 5,
-    build: () => ({ type: 'allocate_budget', category: 'social', amount: 5 }),
-  },
-  {
-    id: 'trade', energy: 1, icon: '📦', category: 'diplomacy', needsTarget: true, unlock: 'base',
-    requirement: { kind: 'influence', amount: 2 },
-    build: (ctx) => ctx.target ? {
-      type: 'propose_trade', targetCountry: ctx.target,
-      offers: [{ resource: surplusResource(ctx.country), amount: 8 }],
-      requests: [], duration: 12,
-    } : null,
-  },
-  {
-    id: 'alliance', energy: 2, icon: '🤝', category: 'diplomacy', needsTarget: true, unlock: 'base',
-    requirement: { kind: 'influence', amount: 5 },
-    build: (ctx) => ctx.target ? { type: 'propose_alliance', targetCountry: ctx.target } : null,
-  },
-  {
-    id: 'sanctions', energy: 2, icon: '🚫', category: 'diplomacy', needsTarget: true, unlock: 'base',
-    requirement: { kind: 'influence', amount: 3 },
-    build: (ctx) => ctx.target ? { type: 'propose_sanction', targetCountry: ctx.target } : null,
-  },
-  {
-    id: 'stockpile', energy: 1, icon: '🛢️', category: 'economy', needsTarget: false, unlock: 'base',
-    build: (ctx) => ({ type: 'build_stockpile', resource: deficitResource(ctx.country), months: 3 }),
-  },
-  {
-    id: 'declare_war', energy: 3, icon: '⚔️', category: 'military', needsTarget: true, unlock: 'base',
-    build: (ctx) => ctx.target ? { type: 'declare_war', targetCountry: ctx.target } : null,
-  },
+/**
+ * Action builders, keyed by card id. The serializable balance data
+ * (energy, cost, requirement, unlock, icon) lives in cards.json; only the
+ * non-serializable action logic stays here. Balance is now a data edit.
+ */
+const BUILDERS: Record<string, (ctx: CardCtx) => PlayerAction | null> = {
+  recruit: (ctx) => ctx.home ? {
+    type: 'create_army', armyType: 'infantry', size: 10_000,
+    name: `Division-${Date.now() % 10000}`,
+    latitude: ctx.home.lat, longitude: ctx.home.lng,
+  } : null,
+  invest: () => ({ type: 'allocate_budget', category: 'economy', amount: 10 }),
+  social: () => ({ type: 'allocate_budget', category: 'social', amount: 5 }),
+  trade: (ctx) => ctx.target ? {
+    type: 'propose_trade', targetCountry: ctx.target,
+    offers: [{ resource: surplusResource(ctx.country), amount: 8 }],
+    requests: [], duration: 12,
+  } : null,
+  alliance: (ctx) => ctx.target ? { type: 'propose_alliance', targetCountry: ctx.target } : null,
+  sanctions: (ctx) => ctx.target ? { type: 'propose_sanction', targetCountry: ctx.target } : null,
+  stockpile: (ctx) => ({ type: 'build_stockpile', resource: deficitResource(ctx.country), months: 3 }),
+  declare_war: (ctx) => ctx.target ? { type: 'declare_war', targetCountry: ctx.target } : null,
+  peace: (ctx) => ctx.warEnemies[0] ? { type: 'propose_peace', targetCountry: ctx.warEnemies[0] } : null,
+  mobilize: (ctx) => ctx.home ? {
+    type: 'create_army', armyType: 'infantry', size: 25_000,
+    name: `Mobilized-${Date.now() % 10000}`,
+    latitude: ctx.home.lat, longitude: ctx.home.lng,
+  } : null,
+  armored_army: (ctx) => ctx.home ? {
+    type: 'create_army', armyType: 'armored', size: 3_000,
+    name: `Armored-${Date.now() % 10000}`,
+    latitude: ctx.home.lat, longitude: ctx.home.lng,
+  } : null,
+  drone_raid: (ctx) => ctx.target ? { type: 'drone_raid', targetCountry: ctx.target, target: 'military' } : null,
+  airstrike: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'surgical' } : null,
+  blockade: (ctx) => ctx.target ? { type: 'naval_blockade', targetCountry: ctx.target } : null,
+  carpet_bombing: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'carpet' } : null,
+  nuke_tactical: (ctx) => ctx.target ? { type: 'nuclear_strike', targetCountry: ctx.target, warhead: 'tactical' } : null,
+  cyber_attack: (ctx) => ctx.target ? { type: 'cyber_attack', targetCountry: ctx.target, target: 'infrastructure' } : null,
+  incite: (ctx) => ctx.target ? { type: 'incite_rebellion', targetCountry: ctx.target } : null,
+};
 
-  // ── War situational ──
-  {
-    id: 'peace', energy: 1, icon: '🕊️', category: 'diplomacy', needsTarget: false, unlock: 'war',
-    build: (ctx) => ctx.warEnemies[0]
-      ? { type: 'propose_peace', targetCountry: ctx.warEnemies[0] }
-      : null,
-  },
-  {
-    id: 'mobilize', energy: 2, icon: '📯', category: 'military', needsTarget: false, unlock: 'war',
-    budgetCost: () => 25, // 25K infantry × $1K
-    build: (ctx) => ctx.home ? {
-      type: 'create_army', armyType: 'infantry', size: 25_000,
-      name: `Mobilized-${Date.now() % 10000}`,
-      latitude: ctx.home.lat, longitude: ctx.home.lng,
-    } : null,
-  },
+/** Budget cost spec in cards.json: a flat $B amount or a GDP-scaled base. */
+type BudgetSpec = { flat: number } | { scaled: number };
 
-  // ── Tech-unlocked ──
-  {
-    id: 'armored_army', energy: 2, icon: '🛡️', category: 'military', needsTarget: false,
-    unlock: { tech: 'mil_2' },
-    budgetCost: () => 30, // 3K vehicles × $10M
-    build: (ctx) => ctx.home ? {
-      type: 'create_army', armyType: 'armored', size: 3_000,
-      name: `Armored-${Date.now() % 10000}`,
-      latitude: ctx.home.lat, longitude: ctx.home.lng,
-    } : null,
-  },
-  {
-    id: 'drone_raid', energy: 2, icon: '🛩️', category: 'military', needsTarget: true,
-    unlock: { tech: 'mil_3' },
-    budgetCost: (c) => scaledCost(3, c.economy.gdp),
-    build: (ctx) => ctx.target ? { type: 'drone_raid', targetCountry: ctx.target, target: 'military' } : null,
-  },
-  {
-    id: 'airstrike', energy: 2, icon: '✈️', category: 'military', needsTarget: true,
-    unlock: { tech: 'mil_5' },
-    budgetCost: (c) => scaledCost(2, c.economy.gdp),
-    requirement: { kind: 'airforce', amount: 10 },
-    build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'surgical' } : null,
-  },
-  {
-    id: 'blockade', energy: 2, icon: '⚓', category: 'military', needsTarget: true,
-    unlock: { tech: 'mil_6' },
-    budgetCost: (c) => scaledCost(5, c.economy.gdp),
-    requirement: { kind: 'navy', amount: 20 },
-    build: (ctx) => ctx.target ? { type: 'naval_blockade', targetCountry: ctx.target } : null,
-  },
-  {
-    id: 'carpet_bombing', energy: 3, icon: '💥', category: 'military', needsTarget: true,
-    unlock: { tech: 'mil_7' },
-    budgetCost: (c) => scaledCost(20, c.economy.gdp),
-    requirement: { kind: 'airforce', amount: 50 },
-    build: (ctx) => ctx.target ? { type: 'airstrike', targetCountry: ctx.target, intensity: 'carpet' } : null,
-  },
-  {
-    id: 'nuke_tactical', energy: 4, icon: '☢️', category: 'military', needsTarget: true,
-    unlock: { tech: 'mil_9' },
-    requirement: { kind: 'warheads', amount: 1 },
-    build: (ctx) => ctx.target ? { type: 'nuclear_strike', targetCountry: ctx.target, warhead: 'tactical' } : null,
-  },
-  {
-    id: 'cyber_attack', energy: 2, icon: '💻', category: 'covert', needsTarget: true,
-    unlock: { tech: 'cyber_3' },
-    budgetCost: () => 5,
-    build: (ctx) => ctx.target ? { type: 'cyber_attack', targetCountry: ctx.target, target: 'infrastructure' } : null,
-  },
-  {
-    id: 'incite', energy: 3, icon: '🔥', category: 'covert', needsTarget: true,
-    unlock: { tech: 'intel_1' },
-    budgetCost: () => 8,
-    requirement: { kind: 'influence', amount: 3 },
-    build: (ctx) => ctx.target ? { type: 'incite_rebellion', targetCountry: ctx.target } : null,
-  },
-];
+interface CardData {
+  energy: number;
+  icon: string;
+  category: CardCategory;
+  needsTarget: boolean;
+  unlock: 'base' | 'war' | { tech: string };
+  budget?: BudgetSpec;
+  requirement?: CardRequirement;
+}
+
+function budgetFn(spec: BudgetSpec | undefined): ((c: CountryState) => number) | undefined {
+  if (!spec) return undefined;
+  if ('flat' in spec) return () => spec.flat;
+  return (c) => scaledCost(spec.scaled, c.economy.gdp);
+}
+
+// Assemble cards by merging JSON balance data with the id's action builder.
+// Object insertion order is preserved, so card ordering matches cards.json.
+export const CARDS: CardDef[] = Object.entries(cardData as Record<string, CardData>).map(
+  ([id, d]) => ({
+    id,
+    energy: d.energy,
+    icon: d.icon,
+    category: d.category,
+    needsTarget: d.needsTarget,
+    unlock: d.unlock,
+    budgetCost: budgetFn(d.budget),
+    requirement: d.requirement,
+    build: BUILDERS[id] ?? (() => null),
+  }),
+);
 
 export const CARD_BY_ID: Record<string, CardDef> = Object.fromEntries(CARDS.map(c => [c.id, c]));
 

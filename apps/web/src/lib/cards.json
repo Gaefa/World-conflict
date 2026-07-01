@@ -1,0 +1,20 @@
+{
+  "recruit":        { "energy": 1, "icon": "🪖", "category": "military",  "needsTarget": false, "unlock": "base", "budget": { "flat": 10 } },
+  "invest":         { "energy": 1, "icon": "🏗️", "category": "economy",   "needsTarget": false, "unlock": "base", "budget": { "flat": 10 } },
+  "social":         { "energy": 1, "icon": "🏥", "category": "economy",   "needsTarget": false, "unlock": "base", "budget": { "flat": 5 } },
+  "trade":          { "energy": 1, "icon": "📦", "category": "diplomacy", "needsTarget": true,  "unlock": "base", "requirement": { "kind": "influence", "amount": 2 } },
+  "alliance":       { "energy": 2, "icon": "🤝", "category": "diplomacy", "needsTarget": true,  "unlock": "base", "requirement": { "kind": "influence", "amount": 5 } },
+  "sanctions":      { "energy": 2, "icon": "🚫", "category": "diplomacy", "needsTarget": true,  "unlock": "base", "requirement": { "kind": "influence", "amount": 3 } },
+  "stockpile":      { "energy": 1, "icon": "🛢️", "category": "economy",   "needsTarget": false, "unlock": "base" },
+  "declare_war":    { "energy": 3, "icon": "⚔️", "category": "military",  "needsTarget": true,  "unlock": "base" },
+  "peace":          { "energy": 1, "icon": "🕊️", "category": "diplomacy", "needsTarget": false, "unlock": "war" },
+  "mobilize":       { "energy": 2, "icon": "📯", "category": "military",  "needsTarget": false, "unlock": "war", "budget": { "flat": 25 } },
+  "armored_army":   { "energy": 2, "icon": "🛡️", "category": "military",  "needsTarget": false, "unlock": { "tech": "mil_2" }, "budget": { "flat": 30 } },
+  "drone_raid":     { "energy": 2, "icon": "🛩️", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_3" }, "budget": { "scaled": 3 } },
+  "airstrike":      { "energy": 2, "icon": "✈️", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_5" }, "budget": { "scaled": 2 },  "requirement": { "kind": "airforce", "amount": 10 } },
+  "blockade":       { "energy": 2, "icon": "⚓", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_6" }, "budget": { "scaled": 5 },  "requirement": { "kind": "navy", "amount": 20 } },
+  "carpet_bombing": { "energy": 3, "icon": "💥", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_7" }, "budget": { "scaled": 20 }, "requirement": { "kind": "airforce", "amount": 50 } },
+  "nuke_tactical":  { "energy": 4, "icon": "☢️", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_9" }, "requirement": { "kind": "warheads", "amount": 1 } },
+  "cyber_attack":   { "energy": 2, "icon": "💻", "category": "covert",    "needsTarget": true,  "unlock": { "tech": "cyber_3" }, "budget": { "flat": 5 } },
+  "incite":         { "energy": 3, "icon": "🔥", "category": "covert",    "needsTarget": true,  "unlock": { "tech": "intel_1" }, "budget": { "flat": 8 }, "requirement": { "kind": "influence", "amount": 3 } }
+}
