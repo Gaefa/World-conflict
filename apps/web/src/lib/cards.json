@@ -9,6 +9,7 @@
   "declare_war":    { "energy": 3, "icon": "⚔️", "category": "military",  "needsTarget": true,  "unlock": "base" },
   "peace":          { "energy": 1, "icon": "🕊️", "category": "diplomacy", "needsTarget": false, "unlock": "war" },
   "mobilize":       { "energy": 2, "icon": "📯", "category": "military",  "needsTarget": false, "unlock": "war", "budget": { "flat": 25 } },
+  "invade":         { "energy": 3, "icon": "🎯", "category": "military",  "needsTarget": true,  "unlock": "war", "budget": { "armyShare": 0.5 }, "requirement": { "kind": "army", "amount": 2000 } },
   "armored_army":   { "energy": 2, "icon": "🛡️", "category": "military",  "needsTarget": false, "unlock": { "tech": "mil_2" }, "budget": { "flat": 30 } },
   "drone_raid":     { "energy": 2, "icon": "🛩️", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_3" }, "budget": { "scaled": 3 } },
   "airstrike":      { "energy": 2, "icon": "✈️", "category": "military",  "needsTarget": true,  "unlock": { "tech": "mil_5" }, "budget": { "scaled": 2 },  "requirement": { "kind": "airforce", "amount": 10 } },

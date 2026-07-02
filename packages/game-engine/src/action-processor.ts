@@ -111,7 +111,7 @@ export function processAction(
     case 'airstrike':
       return processAirstrike(state, country, playerCountryCode, action);
     case 'invasion':
-      return processInvasion(state, country, playerCountryCode, action, rng);
+      return processInvasion(state, country, playerCountryCode, action);
     case 'naval_blockade':
       return processNavalBlockade(state, country, playerCountryCode, action);
 

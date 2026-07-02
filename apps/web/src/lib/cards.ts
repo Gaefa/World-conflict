@@ -21,7 +21,7 @@ export type CardCategory = 'military' | 'diplomacy' | 'economy' | 'covert';
  * up front instead of burning energy on a guaranteed-fail action.
  */
 export type CardRequirement = {
-  kind: 'influence' | 'navy' | 'airforce' | 'warheads';
+  kind: 'influence' | 'navy' | 'airforce' | 'warheads' | 'army';
   amount: number;
 };
 
@@ -33,6 +33,7 @@ export function requirementMet(req: CardRequirement | undefined, country: Countr
     case 'navy': return country.military.navy >= req.amount;
     case 'airforce': return country.military.airForce >= req.amount;
     case 'warheads': return country.military.nuclearWeapons >= req.amount;
+    case 'army': return country.military.army >= req.amount;
   }
 }
 
@@ -122,6 +123,9 @@ const BUILDERS: Record<string, (ctx: CardCtx) => PlayerAction | null> = {
     name: `Mobilized-${Date.now() % 10000}`,
     latitude: ctx.home.lat, longitude: ctx.home.lng,
   } : null,
+  invade: (ctx) => ctx.target
+    ? { type: 'invasion', targetCountry: ctx.target, committedForces: 0.5 }
+    : null,
   armored_army: (ctx) => ctx.home ? {
     type: 'create_army', armyType: 'armored', size: 3_000,
     name: `Armored-${Date.now() % 10000}`,
@@ -136,8 +140,11 @@ const BUILDERS: Record<string, (ctx: CardCtx) => PlayerAction | null> = {
   incite: (ctx) => ctx.target ? { type: 'incite_rebellion', targetCountry: ctx.target } : null,
 };
 
-/** Budget cost spec in cards.json: a flat $B amount or a GDP-scaled base. */
-type BudgetSpec = { flat: number } | { scaled: number };
+/**
+ * Budget cost spec in cards.json: a flat $B amount, a GDP-scaled base, or a
+ * share of the army reserve at $50K/soldier (mirrors invasion cost).
+ */
+type BudgetSpec = { flat: number } | { scaled: number } | { armyShare: number };
 
 interface CardData {
   energy: number;
@@ -152,6 +159,9 @@ interface CardData {
 function budgetFn(spec: BudgetSpec | undefined): ((c: CountryState) => number) | undefined {
   if (!spec) return undefined;
   if ('flat' in spec) return () => spec.flat;
+  if ('armyShare' in spec) {
+    return (c) => Math.round(Math.floor(c.military.army * spec.armyShare) * 0.00005 * 10) / 10;
+  }
   return (c) => scaledCost(spec.scaled, c.economy.gdp);
 }
 

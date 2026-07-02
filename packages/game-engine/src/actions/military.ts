@@ -5,7 +5,8 @@ import type {
   GameState,
   CountryState,
 } from '@conflict-game/shared-types';
-import { recruitmentCost, type RNG } from '@conflict-game/game-logic';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
+import { recruitmentCost } from '@conflict-game/game-logic';
 import { addEvent, clamp, fail, isAtWar, makeDipRelation, scaledCost } from './_helpers';
 
 export function processCreateArmy(
@@ -139,21 +140,23 @@ export function processAirstrike(
   };
 }
 
+/**
+ * Invasion = deploying an expeditionary force. Troops are detached from the
+ * country's army reserve into a real Army unit that marches on the enemy
+ * capital. Resolution happens through the military tick: battles with
+ * defenders en route, then occupation → capitulation. No instant dice-roll.
+ */
 export function processInvasion(
   state: GameState, from: CountryState, fromCode: string,
   action: PlayerAction & { type: 'invasion' },
-  rng: RNG,
 ): ActionResult {
   const target = state.countries[action.targetCountry];
   if (!target) return fail(action, 'Target country not in game');
   if (fromCode === action.targetCountry) return fail(action, 'Cannot invade yourself');
 
-  // War not required but invading without declaration = massive diplomatic hit
-  const atWar = isAtWar(state, fromCode, action.targetCountry);
-  if (!atWar) {
-    from.diplomaticInfluence = clamp(from.diplomaticInfluence - 25, 0, 100);
-    from.approval = clamp(from.approval - 15, 0, 100);
-  }
+  const home = SEED_COUNTRIES.find(c => c.code === fromCode);
+  const enemy = SEED_COUNTRIES.find(c => c.code === action.targetCountry);
+  if (!home || !enemy) return fail(action, 'Country coordinates unavailable');
 
   const forces = Math.max(0.1, Math.min(1.0, action.committedForces));
   const committedTroops = Math.floor(from.military.army * forces);
@@ -162,48 +165,54 @@ export function processInvasion(
   const cost = committedTroops * 0.00005; // ~$50K per soldier
   if (from.economy.budget < cost) return fail(action, `Need $${cost.toFixed(1)}B for operation`);
 
-  from.economy.budget -= cost;
-
-  // Battle resolution
-  const attackPower = committedTroops * (1 + from.military.techLevel * 0.1);
-  const defensePower = target.military.army * 1.3 * (1 + target.military.techLevel * 0.1); // 30% defense bonus
-
-  const ratio = attackPower / (attackPower + defensePower);
-  const success = rng() < ratio;
-
-  const attackerLosses = Math.floor(committedTroops * (success ? 0.15 : 0.35));
-  const defenderLosses = Math.floor(target.military.army * (success ? 0.4 : 0.15));
-
-  from.military.army -= attackerLosses;
-  target.military.army -= defenderLosses;
-  target.stability = clamp(target.stability - (success ? 25 : 5), 0, 100);
-  from.stability = clamp(from.stability - (success ? 5 : 15), 0, 100);
-
-  if (success) {
-    //占领 — target loses GDP, attacker gains resources
-    target.economy.gdp *= 0.85;
-    from.economy.gdp += target.economy.gdp * 0.05;
-    target.approval = clamp(target.approval - 20, 0, 100);
-  } else {
+  // War not required but invading without declaration = massive diplomatic hit
+  const atWar = isAtWar(state, fromCode, action.targetCountry);
+  if (!atWar) {
+    from.diplomaticInfluence = clamp(from.diplomaticInfluence - 25, 0, 100);
     from.approval = clamp(from.approval - 15, 0, 100);
   }
 
+  from.economy.budget -= cost;
+  from.military.army -= committedTroops; // detached from the reserve
+
+  state.armies.push({
+    id: `army-${fromCode}-${Date.now()}`,
+    ownerCountry: fromCode,
+    sessionId: state.session.id,
+    name: `Expeditionary Force ${action.targetCountry}`,
+    type: 'infantry',
+    size: committedTroops,
+    latitude: home.latitude,
+    longitude: home.longitude,
+    targetLatitude: enemy.latitude,
+    targetLongitude: enemy.longitude,
+    morale: 85,
+    experience: Math.min(50, from.military.techLevel * 5),
+    status: 'moving',
+    createdAtTick: state.session.currentTick,
+  });
+
+  // Rough ETA at infantry speed (4°/tick), for the player's expectations
+  const dLat = home.latitude - enemy.latitude;
+  let dLng = Math.abs(home.longitude - enemy.longitude);
+  if (dLng > 180) dLng = 360 - dLng;
+  const etaTicks = Math.max(1, Math.ceil(Math.sqrt(dLat * dLat + dLng * dLng) / 4));
+
   addEvent(state, 'military_incident',
     `${fromCode} invades ${action.targetCountry}`,
-    `${fromCode} committed ${committedTroops.toLocaleString()} troops. ${success ? 'Invasion successful.' : 'Invasion repelled.'}`,
+    `${fromCode} deployed ${committedTroops.toLocaleString()} troops toward ${action.targetCountry}'s capital.`,
     'critical', [fromCode, action.targetCountry]);
 
   return {
     success: true, action,
-    message: success ? `Invasion of ${action.targetCountry} successful` : `Invasion of ${action.targetCountry} repelled`,
+    message: `Expeditionary force marching on ${action.targetCountry}`,
     effects: [
       { description: `Budget -$${cost.toFixed(1)}B`, known: true },
       { description: `Committed ${committedTroops.toLocaleString()} troops`, known: true },
-      { description: `Your losses: ${attackerLosses.toLocaleString()} troops`, known: true },
-      { description: `Enemy losses: ${defenderLosses.toLocaleString()} troops`, known: true },
-      { description: success ? 'Territory captured — GDP extraction' : 'Forces retreating', known: true },
+      { description: `ETA ~${etaTicks} months — track it on the war map`, known: true },
+      { description: 'Occupy their capital to force capitulation', known: true },
       ...(!atWar ? [{ description: 'No war declaration — Influence -25, Approval -15', known: true }] : []),
-      { description: success ? 'Occupation resistance expected' : 'Morale damaged', known: false },
+      { description: 'Defending armies may intercept en route', known: false },
       { description: 'Allied nations may intervene', known: false },
     ],
   };

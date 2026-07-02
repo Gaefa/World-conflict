@@ -312,6 +312,9 @@ export interface Translations {
   card_req_navy: string;
   card_req_airforce: string;
   card_req_warheads: string;
+  card_req_army: string;
+  card_name_invade: string;
+  card_desc_invade: string;
   ui_mode_cards: string;
   ui_mode_console: string;
   card_name_recruit: string;

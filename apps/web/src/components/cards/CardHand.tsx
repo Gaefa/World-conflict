@@ -42,6 +42,7 @@ function requirementLabel(t: Translations, req: CardRequirement): string {
     navy: t.card_req_navy,
     airforce: t.card_req_airforce,
     warheads: t.card_req_warheads,
+    army: t.card_req_army,
   }[req.kind];
   return `${t.card_req_prefix} ${req.amount} ${kind}`;
 }
