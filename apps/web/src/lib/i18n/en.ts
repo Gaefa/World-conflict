@@ -627,6 +627,8 @@ export const en: Translations = {
   ev_desc_contraband: 'Contraband route between {a} and {b} has been discovered!',
   ev_desc_battle: '{winner} won the engagement. Attacker lost {attackerLosses}, defender lost {defenderLosses}.',
   ev_desc_army_destroyed: '{army} ({country}) has been wiped out or routed.',
+  ev_desc_capitulation: '{loser} capitulated to {victor} — its capital was occupied and the war is over.',
+  ev_desc_occupation: '{occupier} holds {occupied}\'s capital; its stability is collapsing.',
   res_army_created: 'Army of {size} formed',
   res_stockpile_built: 'Strategic reserve: {resource}',
 

@@ -631,6 +631,8 @@ export interface Translations {
   ev_desc_contraband: string;
   ev_desc_battle: string;
   ev_desc_army_destroyed: string;
+  ev_desc_capitulation: string;
+  ev_desc_occupation: string;
   res_army_created: string;
   res_stockpile_built: string;
 

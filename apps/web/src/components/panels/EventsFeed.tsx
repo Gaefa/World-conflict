@@ -82,6 +82,11 @@ function localizeEventDescription(
       }
       break;
     case 'battle_result':
+      if (data.capitulation) {
+        return t.ev_desc_capitulation
+          .replace('{victor}', name(data.victor))
+          .replace('{loser}', name(data.loser));
+      }
       if (data.destroyedArmy) {
         return t.ev_desc_army_destroyed
           .replace('{army}', String(data.destroyedArmy))
@@ -92,6 +97,13 @@ function localizeEventDescription(
           .replace('{winner}', name(data.winner))
           .replace('{attackerLosses}', String(data.attackerLosses ?? 0))
           .replace('{defenderLosses}', String(data.defenderLosses ?? 0));
+      }
+      break;
+    case 'military_incident':
+      if (data.occupation) {
+        return t.ev_desc_occupation
+          .replace('{occupier}', name(data.occupier))
+          .replace('{occupied}', name(data.occupied));
       }
       break;
   }

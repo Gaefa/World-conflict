@@ -628,6 +628,8 @@ export const ru: Translations = {
   ev_desc_contraband: 'Контрабандный маршрут {a}–{b} обнаружен и закрыт!',
   ev_desc_battle: '{winner} выиграл сражение. Потери атакующего: {attackerLosses}, обороняющегося: {defenderLosses}.',
   ev_desc_army_destroyed: '{army} ({country}) разбита или обращена в бегство.',
+  ev_desc_capitulation: '{loser} капитулировала перед {victor} — столица занята, война окончена.',
+  ev_desc_occupation: '{occupier} удерживает столицу {occupied}; стабильность рушится.',
   res_army_created: 'Сформирована армия: {size} чел.',
   res_stockpile_built: 'Стратегический резерв: {resource}',
 

@@ -1,4 +1,5 @@
 import type { Army, GameState, GameEvent } from '@conflict-game/shared-types';
+import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { RNG } from '../rng';
 import { resolveBattle, maintenanceCost } from './index';
 
@@ -14,9 +15,20 @@ const MOVE_SPEED: Record<string, number> = {
 /** Armies of warring countries within this distance (degrees) engage. */
 const BATTLE_RANGE = 3;
 
+/** An army within this distance of an enemy capital occupies it. */
+const OCCUPY_RANGE = 6;
+
+/** Occupied country capitulates once its stability falls to this. */
+const CAPITULATE_STABILITY = 8;
+
 /** Army is destroyed when it falls below these thresholds. */
 const MIN_SIZE = 100;
 const MIN_MORALE = 10;
+
+/** Capital coordinates by country code (each country's home lat/lng). */
+const CAPITAL: Record<string, { lat: number; lng: number }> = Object.fromEntries(
+  SEED_COUNTRIES.map(c => [c.code, { lat: c.latitude, lng: c.longitude }]),
+);
 
 export interface MilitaryTickResult {
   events: GameEvent[];
@@ -26,13 +38,17 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
-/** Approximate distance in degrees, with longitude shrink by latitude. */
-function armyDistance(a: Army, b: Army): number {
-  const dLat = a.latitude - b.latitude;
-  let dLng = Math.abs(a.longitude - b.longitude);
+/** Approximate distance in degrees between two points, longitude shrunk by latitude. */
+function pointDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLat = lat1 - lat2;
+  let dLng = Math.abs(lng1 - lng2);
   if (dLng > 180) dLng = 360 - dLng; // antimeridian
-  dLng *= Math.cos(((a.latitude + b.latitude) / 2) * (Math.PI / 180));
+  dLng *= Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
   return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+function armyDistance(a: Army, b: Army): number {
+  return pointDistance(a.latitude, a.longitude, b.latitude, b.longitude);
 }
 
 function atWar(state: GameState, c1: string, c2: string): boolean {
@@ -181,6 +197,66 @@ export function processMilitaryTick(state: GameState, rng: RNG): MilitaryTickRes
       ));
     }
     state.armies = state.armies.filter(a => a.size >= MIN_SIZE && a.morale > MIN_MORALE);
+  }
+
+  // ── 5. Occupation: an army holding an undefended enemy capital pressures
+  //        that country until it capitulates, ending the war militarily. ──
+  const occupiedThisTick = new Set<string>(); // one pressure application per country/tick
+  for (const army of state.armies) {
+    if (army.size <= 0) continue;
+
+    for (const rel of state.relations) {
+      if (rel.type !== 'war' || rel.status !== 'active') continue;
+      const enemy = rel.fromCountry === army.ownerCountry ? rel.toCountry
+        : rel.toCountry === army.ownerCountry ? rel.fromCountry : null;
+      if (!enemy || occupiedThisTick.has(enemy)) continue;
+
+      const cap = CAPITAL[enemy];
+      if (!cap || pointDistance(army.latitude, army.longitude, cap.lat, cap.lng) > OCCUPY_RANGE) continue;
+
+      // The capital is defended if the enemy has a surviving army near it.
+      const defended = state.armies.some(a =>
+        a.ownerCountry === enemy && a.size > 0 &&
+        pointDistance(a.latitude, a.longitude, cap.lat, cap.lng) <= OCCUPY_RANGE,
+      );
+      if (defended) continue;
+
+      const target = state.countries[enemy];
+      const occupier = state.countries[army.ownerCountry];
+      if (!target) continue;
+      occupiedThisTick.add(enemy);
+
+      // Occupation pressure
+      target.stability = clamp(target.stability - 4, 0, 100);
+      target.approval = clamp(target.approval - 3, 0, 100);
+      target.economy.gdp *= 0.98; // 2%/tick bleed under occupation
+      if (occupier) occupier.approval = clamp(occupier.approval + 1, 0, 100);
+
+      if (target.stability <= CAPITULATE_STABILITY) {
+        // Capitulation — war ends, occupier takes spoils
+        rel.status = 'expired';
+        const spoils = target.economy.gdp * 0.15;
+        target.economy.gdp -= spoils;
+        target.stability = clamp(target.stability + 20, 0, 100); // post-war floor
+        if (occupier) occupier.economy.gdp += spoils;
+        events.push(makeEvent(
+          state, 'battle_result', 'critical',
+          `${enemy} capitulates to ${army.ownerCountry}`,
+          `${army.ownerCountry} occupied ${enemy}'s capital. ${enemy} has capitulated — the war is over.`,
+          [army.ownerCountry, enemy],
+          { capitulation: true, victor: army.ownerCountry, loser: enemy, spoils: Math.round(spoils) },
+        ));
+      } else if (state.session.currentTick % 3 === 0) {
+        // Throttle ongoing-occupation notices to every 3 ticks
+        events.push(makeEvent(
+          state, 'military_incident', 'high',
+          `${army.ownerCountry} occupies ${enemy}'s capital`,
+          `${army.ownerCountry}'s forces hold ${enemy}'s capital region — its stability is collapsing.`,
+          [army.ownerCountry, enemy],
+          { occupation: true, occupier: army.ownerCountry, occupied: enemy },
+        ));
+      }
+    }
   }
 
   return { events };
