@@ -5,8 +5,10 @@ import { useGameStore } from '@/stores/gameStore';
 import { useLocaleStore } from '@/stores/localeStore';
 import type { ActionResult } from '@conflict-game/shared-types';
 import type { Translations } from '@/lib/i18n/types';
+import { localizeEffect, localizeCategory } from '@/lib/effectLocalizer';
+import type { Locale } from '@/lib/i18n/types';
 
-function localizeActionMessage(t: Translations, ar: ActionResult): string {
+function localizeActionMessage(t: Translations, ar: ActionResult, locale: Locale | null): string {
   const a = ar.action;
 
   switch (a.type) {
@@ -31,7 +33,7 @@ function localizeActionMessage(t: Translations, ar: ActionResult): string {
     case 'allocate_budget':
       return t.res_budget_alloc
         .replace('{amount}', a.amount.toFixed(1))
-        .replace('{category}', a.category ?? '');
+        .replace('{category}', localizeCategory(a.category ?? '', locale));
     case 'research_tech':
       return ar.success ? t.res_research_ok : (ar.message || t.res_generic_fail);
     case 'cancel_research':
@@ -64,7 +66,7 @@ function localizeActionMessage(t: Translations, ar: ActionResult): string {
 
 export function ActionToast() {
   const lastActionResult = useGameStore((s) => s.lastActionResult);
-  const { t } = useLocaleStore();
+  const { t, locale } = useLocaleStore();
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(lastActionResult);
   const [seen, setSeen] = useState(lastActionResult);
@@ -86,7 +88,7 @@ export function ActionToast() {
 
   if (!visible || !current) return null;
 
-  const message = localizeActionMessage(t, current);
+  const message = localizeActionMessage(t, current, locale);
 
   return (
     <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-slide-up">
@@ -127,7 +129,7 @@ export function ActionToast() {
                       : 'bg-bg-card text-text-secondary'
                   }`}
                 >
-                  {e.known ? e.description : '???'}
+                  {e.known ? localizeEffect(e.description, locale) : '???'}
                 </span>
               );
             })}
