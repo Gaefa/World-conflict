@@ -174,6 +174,9 @@ export function processInvasion(
 
   from.economy.budget -= cost;
   from.military.army -= committedTroops; // detached from the reserve
+  // War weariness: launching an expedition destabilizes the home front
+  // (the old instant-battle invasion cost -5/-15 stability; keep that price)
+  from.stability = clamp(from.stability - 4, 0, 100);
 
   state.armies.push({
     id: `army-${fromCode}-${Date.now()}`,
@@ -209,6 +212,7 @@ export function processInvasion(
     effects: [
       { description: `Budget -$${cost.toFixed(1)}B`, known: true },
       { description: `Committed ${committedTroops.toLocaleString()} troops`, known: true },
+      { description: 'Stability -4', known: true, value: '-4' },
       { description: `ETA ~${etaTicks} months — track it on the war map`, known: true },
       { description: 'Occupy their capital to force capitulation', known: true },
       ...(!atWar ? [{ description: 'No war declaration — Influence -25, Approval -15', known: true }] : []),

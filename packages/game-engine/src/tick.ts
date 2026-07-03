@@ -219,6 +219,17 @@ export function runTick(input: TickInput): TickOutput {
     }
   }
 
+  // 4.6. Prune long-dead relations — without this the array grows unbounded
+  // (every expired proposal/war stays forever, rescanned and re-broadcast each
+  // tick). Dead relations are kept for 30 ticks after creation so clients still
+  // see the status transition in deltas (proposal-outcome toasts need it).
+  if (tick % 10 === 0) {
+    state.relations = state.relations.filter(r =>
+      r.status === 'active' || r.status === 'proposed' ||
+      tick - r.createdAtTick <= 30
+    );
+  }
+
   // 5. Global tension
   const avgStability =
     Object.values(state.countries).reduce((s, c) => s + c.stability, 0) /
