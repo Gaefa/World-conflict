@@ -59,7 +59,7 @@ export function computeMilitaryActions(
       actions.push({
         type: 'create_army',
         armyType: 'infantry',
-        name: `${aiState.countryCode}-force-${state.session.currentTick}`,
+        name: `${aiState.countryCode}-force-${state.session.currentTick}-${state.armies.filter(a => a.ownerCountry === aiState.countryCode).length + 1}`,
         size: Math.floor(15000 * diff),
         latitude: homeSeed?.latitude ?? 0,
         longitude: homeSeed?.longitude ?? 0,
@@ -87,7 +87,7 @@ export function computeMilitaryActions(
     actions.push({
       type: 'create_army',
       armyType: 'infantry',
-      name: `${aiState.countryCode}-force-${Date.now()}`,
+      name: `${aiState.countryCode}-force-${state.session.currentTick}`,
       size: Math.floor(10000 * diff),
       latitude: homeSeed?.latitude ?? 0,
       longitude: homeSeed?.longitude ?? 0,

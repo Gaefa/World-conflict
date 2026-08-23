@@ -17,7 +17,7 @@ import { OnboardingTutorial } from '@/components/ui/OnboardingTutorial';
 import { GoalsPanel } from '@/components/ui/GoalsPanel';
 import { VictoryOverlay } from '@/components/ui/VictoryOverlay';
 import { Leaderboard } from '@/components/panels/Leaderboard';
-import { CardHand } from '@/components/cards/CardHand';
+import { ActionPanel } from '@/components/cards/ActionPanel';
 import { useGameStore } from '@/stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useLocaleStore } from '@/stores/localeStore';
@@ -194,7 +194,7 @@ export default function Home() {
 
       {/* Cards mode (default): hand of action cards. Console mode (hardcore): full tabs. */}
       {uiMode === 'cards' && gameState?.session.status === 'active' && playerCountryCode && gameState.countries[playerCountryCode] ? (
-        <CardHand
+        <ActionPanel
           country={gameState.countries[playerCountryCode]}
           selectedCountryCode={selectedCountryCode}
           playerCountryCode={playerCountryCode}

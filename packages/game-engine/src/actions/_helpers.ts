@@ -5,6 +5,19 @@ import type {
   DiplomaticRelation,
 } from '@conflict-game/shared-types';
 
+let _entitySeq = 0;
+
+/**
+ * Monotonic unique id for entities created during action processing (armies,
+ * relations, spies, disinfo campaigns, covert assets). `Date.now()` was
+ * colliding when the same country produced two entities in the same
+ * millisecond (very common — AI queues multiple actions per tick that all
+ * execute together).
+ */
+export function nextEntityId(prefix: string, currentTick: number): string {
+  return `${prefix}-${currentTick}-${++_entitySeq}`;
+}
+
 export function makeDipRelation(
   state: GameState,
   type: DiplomaticRelation['type'],
@@ -12,7 +25,7 @@ export function makeDipRelation(
   targetCode: string,
 ): DiplomaticRelation {
   return {
-    id: `rel-${type}-${fromCode}-${targetCode}-${Date.now()}`,
+    id: nextEntityId(`rel-${type}-${fromCode}-${targetCode}`, state.session.currentTick),
     sessionId: state.session.id,
     fromCountry: fromCode,
     toCountry: targetCode,

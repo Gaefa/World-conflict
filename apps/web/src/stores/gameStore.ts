@@ -5,10 +5,6 @@ import type { GameState, GameStateDelta, PlayerAction, ActionResult, DiplomacyTy
 import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
 import { WebSocketTransport, InMemoryTransport, type GameTransport } from '@/lib/transport';
 import { saveGame as idbSaveGame, type SaveSnapshot } from '@/lib/save-store';
-import { drawCard, laneRegen, DOMAINS, MAX_ENERGY, START_ENERGY, MAX_HAND, type CardCategory } from '@/lib/cards';
-
-type LaneState = Record<CardCategory, number>;
-type LaneHands = Record<CardCategory, string[]>;
 
 /** Outcome of one of the player's outgoing proposals (AI accepted/rejected it). */
 export interface ProposalOutcome {
@@ -42,16 +38,6 @@ interface GameStore {
   /** Recent answers to the player's outgoing proposals (for toast display). */
   proposalOutcomes: ProposalOutcome[];
   dismissProposalOutcome: (id: string) => void;
-
-  // Card mode (v0.7): per-domain lanes, each with own energy + hand
-  laneEnergy: LaneState;
-  laneHands: LaneHands;
-  /** Deduct energy from the card's lane and discard it after the action was sent. */
-  consumeCard: (cardId: string, energy: number, domain: CardCategory) => void;
-  /** Discard a card without playing it — frees the slot to redraw next tick. */
-  discardCard: (cardId: string, domain: CardCategory) => void;
-  /** Reset lanes and draw an opening hand per domain (call on game start/load). */
-  initCards: () => void;
 
   // Actions
   setTransport: (transport: GameTransport) => void;
@@ -93,40 +79,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ proposalOutcomes: get().proposalOutcomes.filter(o => o.id !== id) });
   },
 
-  laneEnergy: { military: START_ENERGY, economy: START_ENERGY, diplomacy: START_ENERGY, covert: START_ENERGY },
-  laneHands: { military: [], economy: [], diplomacy: [], covert: [] },
-
-  consumeCard: (cardId, energy, domain) => {
-    const laneHands = { ...get().laneHands };
-    const laneEnergy = { ...get().laneEnergy };
-    laneHands[domain] = laneHands[domain].filter(id => id !== cardId);
-    laneEnergy[domain] = Math.max(0, laneEnergy[domain] - energy);
-    set({ laneHands, laneEnergy });
-  },
-
-  discardCard: (cardId, domain) => {
-    const laneHands = { ...get().laneHands };
-    laneHands[domain] = laneHands[domain].filter(id => id !== cardId);
-    set({ laneHands });
-  },
-
-  initCards: () => {
-    const { gameState, playerId } = get();
-    const playerCode = gameState?.players.find(p => p.id === playerId)?.countryCode;
-    const techs = playerCode ? gameState?.countries[playerCode]?.tech?.researchedTechs ?? [] : [];
-    const laneHands: LaneHands = { military: [], economy: [], diplomacy: [], covert: [] };
-    const laneEnergy: LaneState = { military: START_ENERGY, economy: START_ENERGY, diplomacy: START_ENERGY, covert: START_ENERGY };
-    for (const d of DOMAINS) {
-      const hand: string[] = [];
-      for (let i = 0; i < MAX_HAND; i++) {
-        const id = drawCard(d, techs, false, hand);
-        if (id) hand.push(id);
-      }
-      laneHands[d] = hand;
-    }
-    set({ laneHands, laneEnergy });
-  },
-
   setTransport: (transport) => {
     // Swap transports — used when switching between multiplayer and singleplayer.
     // Caller is expected to not have an active connection on the old transport.
@@ -158,7 +110,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const initialState = await transport.startGame(sessionId, playerId);
     const canSave = transport instanceof InMemoryTransport;
     set({ gameState: initialState, currentTick: 0, canSave });
-    get().initCards();
     get().connectToGame();
   },
 
@@ -246,7 +197,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       canSave: true,
       connected: false,
     });
-    get().initCards();
     get().connectToGame();
   },
 
@@ -314,25 +264,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Tick sound (subtle)
     playTick();
 
-    // Card mode: per-lane energy regen + draw up to hand limit
-    const playerCodeForCards = gameState.players.find(p => p.id === get().playerId)?.countryCode;
-    const laneEnergy = { ...get().laneEnergy };
-    const laneHands = { ...get().laneHands };
-    if (playerCodeForCards) {
-      const techs = newState.countries[playerCodeForCards]?.tech?.researchedTechs ?? [];
-      const atWar = newState.relations.some(
-        r => r.type === 'war' && r.status === 'active' &&
-        (r.fromCountry === playerCodeForCards || r.toCountry === playerCodeForCards)
-      );
-      for (const d of DOMAINS) {
-        laneEnergy[d] = Math.min(MAX_ENERGY, laneEnergy[d] + laneRegen(d, atWar));
-        if (laneHands[d].length < MAX_HAND) {
-          const drawn = drawCard(d, techs, atWar, laneHands[d]);
-          if (drawn) laneHands[d] = [...laneHands[d], drawn];
-        }
-      }
-    }
-
     if (delta.tensionIndex !== undefined) {
       newState.tensionIndex = delta.tensionIndex;
     }
@@ -344,8 +275,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       tickDurationMs: delta.tickDurationMs ?? get().tickDurationMs,
       lastTickAt: delta.tickEmittedAt ?? Date.now(),
       proposalOutcomes: newOutcomes,
-      laneEnergy,
-      laneHands,
     });
   },
 }));

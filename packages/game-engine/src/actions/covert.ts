@@ -7,7 +7,7 @@ import type {
   HeldAsset,
 } from '@conflict-game/shared-types';
 import type { RNG } from '@conflict-game/game-logic';
-import { addEvent, clamp, fail, makeDipRelation } from './_helpers';
+import { addEvent, clamp, fail, makeDipRelation, nextEntityId } from './_helpers';
 
 export function processProxyWar(
   state: GameState, from: CountryState, fromCode: string,
@@ -513,7 +513,7 @@ export function processAbductAsset(
   // Success
   if (!from.heldAssets) from.heldAssets = [];
   const asset: HeldAsset = {
-    id: `asset-${fromCode}-${Date.now()}`,
+    id: nextEntityId(`asset-${fromCode}`, state.session.currentTick),
     assetType: action.assetType,
     fromCountry: action.targetCountry,
     capturedAtTick: state.session.currentTick,

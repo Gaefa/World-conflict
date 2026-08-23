@@ -68,9 +68,14 @@ export function computeAIActions(
     actions.push(...computeIntelActions(state, aiState, country, diff, rng));
   }
 
-  // Лимит действий за тик (easy=1, normal=2, hard=3)
+  // Лимит действий за тик (easy=1, normal=2, hard=3). move_army — дешёвое
+  // идемпотентное обновление таргета (не полноценное "решение"), поэтому
+  // держим его вне cap'a: иначе при войне airstrike+cyber забивают cap и
+  // все idle-армии никогда не выходят на марш.
   const maxActions = Math.ceil(2 * diff);
-  return actions.slice(0, maxActions);
+  const moves = actions.filter(a => a.type === 'move_army');
+  const others = actions.filter(a => a.type !== 'move_army');
+  return [...others.slice(0, maxActions), ...moves];
 }
 
 function updateRelationships(state: GameState, aiState: AIState): void {

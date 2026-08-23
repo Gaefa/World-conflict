@@ -248,12 +248,17 @@ function removeOps(intel: IntelligenceState, ids: string[]): void {
   }
 }
 
+let _intelEvtSeq = 0;
+
 function makeEvent(
   state: GameState, tick: number, type: GameEvent['type'], severity: GameEvent['severity'],
   title: string, involved: string[], data: Record<string, unknown> = {},
 ): GameEvent {
   return {
-    id: `evt-intel-${state.session.id}-${tick}-${type}-${involved.join('_')}-${Date.now()}`,
+    // Monotonic counter (was Date.now()): two ops for the same country pair
+    // caught in the same tick+ms collided on id, which is a React key in the
+    // EventsFeed and produced duplicate-key warnings + occasional misrender.
+    id: `evt-intel-${state.session.id}-${tick}-${type}-${involved.join('_')}-${++_intelEvtSeq}`,
     sessionId: state.session.id,
     tick, type, severity, title,
     description: title,

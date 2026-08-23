@@ -212,10 +212,27 @@ export function runTick(input: TickInput): TickOutput {
     };
   }
 
-  // 4.5. Expire stale proposals (unanswered for 15+ ticks)
+  // 4.5. Expire stale proposals (unanswered for 15+ ticks) and time-boxed
+  //      active relations whose expiresAtTick has passed (trade agreements,
+  //      naval blockades, smuggle routes — all set the field but nothing was
+  //      flipping status until now, so they lived forever).
   for (const rel of state.relations) {
     if (rel.status === 'proposed' && tick - rel.createdAtTick > 15) {
       rel.status = 'expired';
+    } else if (rel.status === 'active' && rel.expiresAtTick !== null && tick >= rel.expiresAtTick) {
+      rel.status = 'expired';
+      newEvents.push({
+        id: `evt-${tick}-${rel.id}-expired`,
+        sessionId,
+        type: 'diplomatic_incident',
+        title: `${rel.type} between ${rel.fromCountry} & ${rel.toCountry} expired`,
+        description: `The ${rel.type} agreement has ended.`,
+        severity: 'low',
+        involvedCountries: [rel.fromCountry, rel.toCountry],
+        tick,
+        data: { relationType: rel.type, relationId: rel.id },
+        createdAt: new Date().toISOString(),
+      });
     }
   }
 

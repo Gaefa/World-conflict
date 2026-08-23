@@ -7,7 +7,7 @@ import type {
 } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import { recruitmentCost } from '@conflict-game/game-logic';
-import { addEvent, clamp, fail, isAtWar, makeDipRelation, scaledCost } from './_helpers';
+import { addEvent, clamp, fail, isAtWar, makeDipRelation, nextEntityId, scaledCost } from './_helpers';
 
 export function processCreateArmy(
   state: GameState,
@@ -24,7 +24,7 @@ export function processCreateArmy(
   country.stability = clamp(country.stability - 1, 0, 100);
 
   state.armies.push({
-    id: `army-${countryCode}-${Date.now()}`,
+    id: nextEntityId(`army-${countryCode}`, state.session.currentTick),
     ownerCountry: countryCode,
     sessionId: state.session.id,
     name: action.name,
@@ -179,7 +179,7 @@ export function processInvasion(
   from.stability = clamp(from.stability - 4, 0, 100);
 
   state.armies.push({
-    id: `army-${fromCode}-${Date.now()}`,
+    id: nextEntityId(`army-${fromCode}`, state.session.currentTick),
     ownerCountry: fromCode,
     sessionId: state.session.id,
     name: `Expeditionary Force ${action.targetCountry}`,

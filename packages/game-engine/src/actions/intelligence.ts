@@ -6,7 +6,7 @@ import type {
   CountryState,
 } from '@conflict-game/shared-types';
 import { SPY_OP_CONFIG } from '@conflict-game/shared-types';
-import { fail } from './_helpers';
+import { fail, nextEntityId } from './_helpers';
 
 export function processLaunchSpyOp(
   state: GameState,
@@ -44,7 +44,7 @@ export function processLaunchSpyOp(
 
   // Create spy operation
   const op = {
-    id: `spy-${playerCountryCode}-${action.targetCountry}-${Date.now()}`,
+    id: nextEntityId(`spy-${playerCountryCode}-${action.targetCountry}`, state.session.currentTick),
     type: action.opType,
     targetCountry: action.targetCountry,
     duration: config.baseDuration,
@@ -141,7 +141,7 @@ export function processLaunchDisinfo(
   country.economy.budget -= cost;
 
   country.intel.disinfo.push({
-    id: `disinfo-${country.code}-${category}-${Date.now()}`,
+    id: nextEntityId(`disinfo-${country.code}-${category}`, state.session.currentTick),
     category,
     multiplier,
     duration,

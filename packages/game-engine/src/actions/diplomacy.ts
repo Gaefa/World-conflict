@@ -340,6 +340,13 @@ export function processProposalResponse(
     }
 
     relation.status = 'active';
+    // Restart the duration countdown at acceptance — expiresAtTick was set at
+    // proposal time (createdAtTick + duration), so without this a trade
+    // accepted late would only run for the remainder of the proposal window.
+    if (relation.expiresAtTick !== null) {
+      const duration = relation.expiresAtTick - relation.createdAtTick;
+      relation.expiresAtTick = state.session.currentTick + duration;
+    }
     addEvent(state, 'diplomatic_incident',
       `${relation.toCountry} accepts ${relation.type} from ${relation.fromCountry}`,
       `${relation.toCountry} has accepted the ${relation.type} proposal.`,

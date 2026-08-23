@@ -196,15 +196,19 @@ export class GameLoop {
       this.stop(sessionId);
     }
 
-    // Adaptive tick: recompute duration based on current war count
-    const newTickMs = computeTickMs(state, this.tickIntervalMs);
-    const prevTickMs = this.sessionTickMs.get(sessionId) ?? this.tickIntervalMs;
-    if (Math.abs(newTickMs - prevTickMs) >= 1_000) {
-      // Duration changed — restart interval with new cadence
-      clearInterval(this.intervals.get(sessionId));
-      const id = setInterval(() => this.tick(sessionId), newTickMs);
-      this.intervals.set(sessionId, id);
-      this.sessionTickMs.set(sessionId, newTickMs);
+    // Adaptive tick: recompute duration based on current war count.
+    // Skip if the session was just stopped — otherwise we'd re-create a
+    // setInterval on a finished session and leak it.
+    if (this.intervals.has(sessionId)) {
+      const newTickMs = computeTickMs(state, this.tickIntervalMs);
+      const prevTickMs = this.sessionTickMs.get(sessionId) ?? this.tickIntervalMs;
+      if (Math.abs(newTickMs - prevTickMs) >= 1_000) {
+        // Duration changed — restart interval with new cadence
+        clearInterval(this.intervals.get(sessionId));
+        const id = setInterval(() => this.tick(sessionId), newTickMs);
+        this.intervals.set(sessionId, id);
+        this.sessionTickMs.set(sessionId, newTickMs);
+      }
     }
 
     // Per-player fog: send each player their fogged view (include timing info)
