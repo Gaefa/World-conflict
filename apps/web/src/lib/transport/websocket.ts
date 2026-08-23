@@ -38,8 +38,17 @@ function deriveWsUrl(apiUrl: string): string {
  * REST calls and the WS connection will target it. With no options, falls
  * back to NEXT_PUBLIC_API_URL / NEXT_PUBLIC_WS_URL env vars.
  */
+/** Reconnect backoff: 1s, 2s, 4s, 8s, then every 15s. */
+function backoffMs(attempt: number): number {
+  return Math.min(1000 * 2 ** attempt, 15_000);
+}
+
 export class WebSocketTransport implements GameTransport {
   private ws: WebSocket | null = null;
+  /** Set while a session is live; cleared by disconnect() so we stop retrying. */
+  private session: { sessionId: string; playerId: string; handlers: TransportHandlers } | null = null;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryAttempt = 0;
   private readonly apiUrl: string;
   private readonly wsUrl: string;
 
@@ -92,9 +101,19 @@ export class WebSocketTransport implements GameTransport {
   }
 
   connect(sessionId: string, playerId: string, handlers: TransportHandlers) {
+    // Remember the session so a dropped socket can re-join on its own.
+    this.session = { sessionId, playerId, handlers };
+    this.open();
+  }
+
+  /** (Re)open the socket for the remembered session. */
+  private open() {
+    if (!this.session) return;
+    const { sessionId, playerId, handlers } = this.session;
     const ws = new WebSocket(this.wsUrl);
 
     ws.onopen = () => {
+      this.retryAttempt = 0;
       handlers.onConnected?.();
       ws.send(JSON.stringify({ type: 'join_session', payload: { sessionId, playerId } }));
     };
@@ -114,12 +133,26 @@ export class WebSocketTransport implements GameTransport {
     ws.onclose = () => {
       this.ws = null;
       handlers.onDisconnected?.();
+      // Auto-rejoin unless disconnect() was called deliberately. The server
+      // keys connections by playerId, so re-sending join_session restores the
+      // player's slot and deltas resume on the next tick.
+      if (this.session) {
+        const delay = backoffMs(this.retryAttempt++);
+        this.retryTimer = setTimeout(() => this.open(), delay);
+      }
     };
 
     this.ws = ws;
   }
 
   disconnect() {
+    // Clearing the session first stops onclose from scheduling a retry.
+    this.session = null;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    this.retryAttempt = 0;
     if (this.ws) {
       this.ws.close();
       this.ws = null;

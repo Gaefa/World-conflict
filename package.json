@@ -16,11 +16,14 @@
     "db:seed": "npm run db:seed --workspace=apps/server",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
     "check:circular": "npx madge --circular --extensions ts,tsx apps/server/src apps/web/src packages",
-    "check:unused": "npx ts-prune -p apps/server/tsconfig.json"
+    "check:unused": "npx ts-prune -p apps/server/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "turbo": "^2.4.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=20"

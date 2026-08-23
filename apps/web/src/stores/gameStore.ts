@@ -57,6 +57,8 @@ interface GameStore {
   saveGame: (slotName: string) => Promise<void>;
   /** Restore a previously saved slot and resume ticking. */
   loadGame: (snap: SaveSnapshot) => Promise<void>;
+  /** Tear the finished session down and return to the main menu. */
+  resetSession: () => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -146,6 +148,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
   disconnectFromGame: () => {
     get().transport.disconnect();
     set({ connected: false });
+  },
+
+  resetSession: () => {
+    get().transport.disconnect();
+    // Fresh transport: the finished session lives inside the old one.
+    set({
+      transport: new WebSocketTransport(),
+      sessionId: null,
+      playerId: null,
+      connected: false,
+      gameState: null,
+      currentTick: 0,
+      tensionIndex: 0,
+      lastTickAt: 0,
+      selectedCountryCode: null,
+      isPaused: false,
+      lastActionResult: null,
+      proposalOutcomes: [],
+      canSave: false,
+    });
   },
 
   setSelectedCountry: (code) => {

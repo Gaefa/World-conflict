@@ -48,6 +48,7 @@ export default function Home() {
     togglePause,
     playerId,
     canSave,
+    resetSession,
   } = useGameStore(useShallow(s => ({
     gameState: s.gameState,
     currentTick: s.currentTick,
@@ -63,6 +64,7 @@ export default function Home() {
     togglePause: s.togglePause,
     playerId: s.playerId,
     canSave: s.canSave,
+    resetSession: s.resetSession,
   })));
 
   const { data: seedCountries } = useCountries();
@@ -283,6 +285,7 @@ export default function Home() {
             flag: seedCountries?.find(sc => sc.code === s.code)?.flag || '',
           }))}
           onClose={() => setShowVictory(false)}
+          onRestart={() => { resetSession(); setShowVictory(true); }}
         />
       )}
     </div>

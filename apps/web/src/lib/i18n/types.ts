@@ -594,6 +594,7 @@ export interface Translations {
   victory_title: string;
   victory_achieved: string;
   victory_close: string;
+  victory_new_game: string;
 
   // ── Leaderboard ──
   leaderboard_title: string;

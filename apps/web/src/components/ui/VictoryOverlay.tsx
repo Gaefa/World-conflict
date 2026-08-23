@@ -9,9 +9,10 @@ interface VictoryOverlayProps {
   condition: string;
   scores: { code: string; name: string; flag: string; indexOfPower: number }[];
   onClose: () => void;
+  onRestart: () => void;
 }
 
-export function VictoryOverlay({ winner, winnerName, winnerFlag, condition, scores, onClose }: VictoryOverlayProps) {
+export function VictoryOverlay({ winner, winnerName, winnerFlag, condition, scores, onClose, onRestart }: VictoryOverlayProps) {
   const { t } = useLocaleStore();
 
   const conditionLabels: Record<string, string> = {
@@ -60,12 +61,20 @@ export function VictoryOverlay({ winner, winnerName, winnerFlag, condition, scor
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="bg-accent-red hover:bg-red-600 text-white px-8 py-2 rounded font-bold uppercase tracking-wider transition-colors"
-        >
-          {t.victory_close}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={onRestart}
+            className="bg-accent-green hover:bg-green-600 text-white px-8 py-2 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            {t.victory_new_game}
+          </button>
+          <button
+            onClick={onClose}
+            className="bg-bg-secondary hover:bg-bg-card border border-border-default text-text-secondary hover:text-text-primary px-8 py-2 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            {t.victory_close}
+          </button>
+        </div>
       </div>
     </div>
   );
