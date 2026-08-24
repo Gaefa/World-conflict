@@ -1,7 +1,7 @@
 import type { Army, GameState, GameEvent } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { RNG } from '../rng';
-import { resolveBattle, maintenanceCost } from './index';
+import { resolveBattle, maintenanceCost, isAtWar } from './index';
 
 /** Movement speed in degrees per tick, by army type. */
 const MOVE_SPEED: Record<string, number> = {
@@ -51,12 +51,6 @@ function armyDistance(a: Army, b: Army): number {
   return pointDistance(a.latitude, a.longitude, b.latitude, b.longitude);
 }
 
-function atWar(state: GameState, c1: string, c2: string): boolean {
-  return state.relations.some(
-    r => r.type === 'war' && r.status === 'active' &&
-    ((r.fromCountry === c1 && r.toCountry === c2) || (r.fromCountry === c2 && r.toCountry === c1))
-  );
-}
 
 let _milEvtSeq = 0;
 
@@ -135,7 +129,7 @@ export function processMilitaryTick(state: GameState, rng: RNG): MilitaryTickRes
     for (const other of state.armies) {
       if (other.id === army.id || fought.has(other.id) || other.size <= 0) continue;
       if (other.ownerCountry === army.ownerCountry) continue;
-      if (!atWar(state, army.ownerCountry, other.ownerCountry)) continue;
+      if (!isAtWar(state, army.ownerCountry, other.ownerCountry)) continue;
       const d = armyDistance(army, other);
       if (d <= BATTLE_RANGE && d < nearestDist) {
         nearest = other;

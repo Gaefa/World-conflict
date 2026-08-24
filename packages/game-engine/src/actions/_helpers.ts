@@ -1,3 +1,5 @@
+export { isAtWar } from '@conflict-game/game-logic';
+
 import type {
   PlayerAction,
   ActionResult,
@@ -60,12 +62,6 @@ export function addEvent(
   });
 }
 
-export function isAtWar(state: GameState, c1: string, c2: string): boolean {
-  return state.relations.some(
-    r => r.type === 'war' && r.status === 'active' &&
-    ((r.fromCountry === c1 && r.toCountry === c2) || (r.fromCountry === c2 && r.toCountry === c1))
-  );
-}
 
 export function fail(action: PlayerAction, message: string): ActionResult {
   return { success: false, action, message, effects: [] };

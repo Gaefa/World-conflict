@@ -6,6 +6,7 @@ import type { CountryState, PlayerAction, ResourceType, ResourceBalance } from '
 import { useLocaleStore } from '@/stores/localeStore';
 import type { Translations } from '@/lib/i18n/types';
 import { StatCard, Bar, EffectRow, ActionBtn, getResourceLabel, type TabProps } from './_shared';
+import { deficitResource } from '@/lib/resources';
 
 // ── Resource UI helpers ──
 
@@ -207,15 +208,7 @@ function EconResourcesSub({ country, canAct, act }: { country: CountryState; can
   const rs = country.resourceState ?? {};
   const resourceCategories = getResourceCategories(t);
 
-  // Smart stockpile: pick highest-deficit resource, fallback to 'oil'
-  const topDeficitResource: ResourceType = (() => {
-    let best: ResourceType = 'oil';
-    let bestVal = 0;
-    for (const [r, b] of Object.entries(rs)) {
-      if (b && b.deficit > bestVal) { bestVal = b.deficit; best = r as ResourceType; }
-    }
-    return best;
-  })();
+  const topDeficitResource = deficitResource(country);
   const [stockpileRes, setStockpileRes] = useState<ResourceType>(topDeficitResource);
   const allResourceTypes: ResourceType[] = [
     'oil','gas','coal','iron','copper','aluminum','rareEarth','lithium',

@@ -6,6 +6,7 @@ import { WarMap } from '../../military/WarMap';
 import { useLocaleStore } from '@/stores/localeStore';
 import { StatCard, Bar, ActionBtn, formatNum, type TabProps } from './_shared';
 import { scaledCost, costLabel } from '@/lib/actionCosts';
+import { deficitResource } from '@/lib/resources';
 
 export function MilitaryTab({
   country,
@@ -31,19 +32,7 @@ export function MilitaryTab({
     if (canAct && onAction) onAction(action);
   };
 
-  // Smart stockpile: pick resource with highest deficit
-  const topDeficitResource: ResourceType = (() => {
-    const rs = country.resourceState ?? {};
-    let best: ResourceType = 'oil';
-    let bestVal = 0;
-    for (const [r, b] of Object.entries(rs)) {
-      if (b && b.deficit > bestVal) {
-        bestVal = b.deficit;
-        best = r as ResourceType;
-      }
-    }
-    return best;
-  })();
+  const topDeficitResource = deficitResource(country);
 
   const gdp = country.economy.gdp;
   // Costs scaled to country GDP (same formula as server-side scaledCost)

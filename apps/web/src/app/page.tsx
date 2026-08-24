@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { GlobeWrapper } from '@/components/globe/GlobeWrapper';
 import { EventsFeed } from '@/components/panels/EventsFeed';
@@ -78,7 +78,12 @@ export default function Home() {
     [setSelectedCountry],
   );
 
-  // All pure per-render derivations live in deriveGameData
+  // All pure per-render derivations live in deriveGameData. Memoized so
+  // unrelated re-renders don't redo ~30 country scans and rebuild the maps.
+  const derived = useMemo(
+    () => deriveGameData(gameState, playerId, seedCountries, selectedCountryCode, clickedCountryName),
+    [gameState, playerId, seedCountries, selectedCountryCode, clickedCountryName],
+  );
   const {
     playerCountryCode,
     countryNames,
@@ -93,7 +98,7 @@ export default function Home() {
     playerCount,
     victoryData,
     leaderboardEntries,
-  } = deriveGameData(gameState, playerId, seedCountries, selectedCountryCode, clickedCountryName);
+  } = derived;
 
   return (
     <div className="h-screen flex flex-col">

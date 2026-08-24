@@ -80,7 +80,3 @@ export interface GameStateDelta {
   tickEmittedAt?: number;
 }
 
-export interface ArmyDelta {
-  id: string;
-  changes: Partial<Army>;
-}

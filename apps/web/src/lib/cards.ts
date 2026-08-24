@@ -1,6 +1,7 @@
 import type { CountryState, PlayerAction, ResourceType } from '@conflict-game/shared-types';
 import { TECH_TREE } from '@conflict-game/shared-types';
 import { scaledCost } from './actionCosts';
+import { surplusResource, deficitResource, topProductionResource } from './resources';
 import cardData from './cards.json';
 
 /**
@@ -73,43 +74,6 @@ export function requirementMet(req: CardRequirement | undefined, country: Countr
     case 'army': return country.military.army >= req.amount;
     case 'militaryTech': return country.military.techLevel >= req.amount;
   }
-}
-
-// ── Resource pickers ──
-
-/** Resource with the biggest surplus — offered in trades. */
-function surplusResource(country: CountryState): ResourceType {
-  const rs = country.resourceState ?? {};
-  let best: ResourceType = 'oil';
-  let bestVal = -Infinity;
-  for (const [r, b] of Object.entries(rs)) {
-    if (!b) continue;
-    const surplus = b.production - b.consumption;
-    if (surplus > bestVal) { bestVal = surplus; best = r as ResourceType; }
-  }
-  return best;
-}
-
-/** Resource with the biggest deficit — stockpiled first. */
-function deficitResource(country: CountryState): ResourceType {
-  const rs = country.resourceState ?? {};
-  let best: ResourceType = 'oil';
-  let bestVal = 0;
-  for (const [r, b] of Object.entries(rs)) {
-    if (b && b.deficit > bestVal) { bestVal = b.deficit; best = r as ResourceType; }
-  }
-  return best;
-}
-
-/** Highest-production resource — the one worth squeezing the market with. */
-function topProductionResource(country: CountryState): { resource: ResourceType; production: number } {
-  const rs = country.resourceState ?? {};
-  let best: ResourceType = 'oil';
-  let bestVal = 0;
-  for (const [r, b] of Object.entries(rs)) {
-    if (b && b.production > bestVal) { bestVal = b.production; best = r as ResourceType; }
-  }
-  return { resource: best, production: bestVal };
 }
 
 // ── Research ──

@@ -1,4 +1,4 @@
-import type { Army, CountryState } from '@conflict-game/shared-types';
+import type { Army, CountryState, GameState } from '@conflict-game/shared-types';
 import type { RNG } from '../rng';
 
 /** Calculate battle outcome between two armies */
@@ -72,4 +72,15 @@ export function maintenanceCost(army: Army): number {
     special_ops: 0.00005,
   };
   return (costPerUnit[army.type] ?? 0.00001) * army.size;
+}
+
+/**
+ * Are these two countries in an active war? Canonical definition — the
+ * engine re-exports this rather than keeping its own copy.
+ */
+export function isAtWar(state: GameState, c1: string, c2: string): boolean {
+  return state.relations.some(
+    r => r.type === 'war' && r.status === 'active' &&
+    ((r.fromCountry === c1 && r.toCountry === c2) || (r.fromCountry === c2 && r.toCountry === c1))
+  );
 }
