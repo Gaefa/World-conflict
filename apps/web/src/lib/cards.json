@@ -30,7 +30,7 @@
   "counter_intel":    { "icon": "🛡️", "category": "covert",    "needsTarget": false, "unlock": "base", "budget": { "flat": 5 } },
   "propaganda":       { "icon": "📢", "category": "covert",    "needsTarget": true,  "unlock": "base", "budget": { "flat": 3 } },
   "sabotage":         { "icon": "🧨", "category": "covert",    "needsTarget": true,  "unlock": "base", "budget": { "flat": 5 } },
-  "cyber_attack":     { "icon": "💻", "category": "covert",    "needsTarget": true,  "unlock": { "tech": "cyber_3" }, "budget": { "flat": 5 } },
+  "cyber_attack":     { "icon": "💻", "category": "covert",    "needsTarget": true,  "unlock": { "tech": "cyber_3" }, "budget": { "flat": 3 } },
   "incite":           { "icon": "🔥", "category": "covert",    "needsTarget": true,  "unlock": { "tech": "intel_1" }, "budget": { "flat": 8 }, "requirement": { "kind": "influence", "amount": 3 } },
   "coup":             { "icon": "🎭", "category": "covert",    "needsTarget": true,  "unlock": "base", "budget": { "flat": 15 }, "requirement": { "kind": "influence", "amount": 10 } },
   "research_covert":  { "icon": "🔬", "category": "covert",    "needsTarget": false, "unlock": "base", "researchBranches": ["cyber", "intelligence", "space"] }

@@ -77,12 +77,18 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
 
           // Queue action for processing in next game tick
           // Result will be sent back from game loop after processing
-          enqueueAction(sessionId, {
+          const queued = enqueueAction(sessionId, {
             playerId,
             countryCode,
             sessionId,
             action: message.payload,
           });
+          if (!queued) {
+            send(socket, {
+              type: 'error',
+              payload: { code: 'RATE_LIMITED', message: 'Too many actions this turn — wait for the next tick' },
+            });
+          }
           break;
         }
 
@@ -100,16 +106,45 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
           }
           break;
 
-        case 'select_country':
-          if (playerId) {
-            const conn = connections.get(playerId);
-            if (conn) conn.countryCode = message.payload.countryCode;
+        case 'select_country': {
+          // Without these guards a client could claim any country at any
+          // time — including mid-game, including one already being played.
+          if (!playerId || !sessionId) {
+            send(socket, { type: 'error', payload: { code: 'NOT_IN_SESSION', message: 'Join a session first' } });
+            break;
           }
+          const conn = connections.get(playerId);
+          if (!conn) break;
+
+          const wanted: string = message.payload.countryCode;
+          const gs = stateResolver?.(sessionId) ?? null;
+
+          if (gs && gs.session.status === 'active') {
+            send(socket, {
+              type: 'error',
+              payload: { code: 'GAME_STARTED', message: 'Cannot change country after the game has started' },
+            });
+            break;
+          }
+
+          const takenBy = [...connections.entries()].find(
+            ([pid, c]) => pid !== playerId && c.sessionId === sessionId && c.countryCode === wanted,
+          );
+          if (takenBy) {
+            send(socket, {
+              type: 'error',
+              payload: { code: 'COUNTRY_TAKEN', message: `${wanted} is already taken` },
+            });
+            break;
+          }
+
+          conn.countryCode = wanted;
           send(socket, {
             type: 'session_status',
-            payload: { status: 'country_selected', message: `Selected ${message.payload.countryCode}` },
+            payload: { status: 'country_selected', message: `Selected ${wanted}` },
           });
           break;
+        }
 
         case 'toggle_pause': {
           if (!sessionId || !gameLoopRef) break;

@@ -4,6 +4,7 @@ import type {
   GameState,
 } from '@conflict-game/shared-types';
 import type { RNG } from '@conflict-game/game-logic';
+import { validateAction } from './validate-action';
 import {
   processSetTaxRate,
   processAllocateBudget,
@@ -69,6 +70,10 @@ export function processAction(
   if (!country) {
     return fail(action, 'Country not found in game state');
   }
+
+  // Reject malformed payloads before any processor touches the state.
+  const invalid = validateAction(action);
+  if (invalid) return fail(action, invalid);
 
   switch (action.type) {
     case 'set_tax_rate':

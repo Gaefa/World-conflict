@@ -11,9 +11,21 @@ export interface QueuedAction {
 /** Per-session action queue. Actions are queued by WS handler and drained by game loop each tick. */
 const queues = new Map<string, QueuedAction[]>();
 
-export function enqueueAction(sessionId: string, item: Omit<QueuedAction, 'timestamp'>): void {
+/**
+ * How many actions one player may have pending for a single tick. Without a
+ * cap a client can enqueue thousands per tick and both outpace honest players
+ * and stall the loop — the AI has always been capped, humans were not.
+ */
+export const MAX_ACTIONS_PER_PLAYER_PER_TICK = 12;
+
+/** Queue an action. Returns false when the player is over their tick budget. */
+export function enqueueAction(sessionId: string, item: Omit<QueuedAction, 'timestamp'>): boolean {
   if (!queues.has(sessionId)) queues.set(sessionId, []);
-  queues.get(sessionId)!.push({ ...item, timestamp: Date.now() });
+  const q = queues.get(sessionId)!;
+  const mine = q.reduce((n, a) => (a.playerId === item.playerId ? n + 1 : n), 0);
+  if (mine >= MAX_ACTIONS_PER_PLAYER_PER_TICK) return false;
+  q.push({ ...item, timestamp: Date.now() });
+  return true;
 }
 
 export function drainActions(sessionId: string): QueuedAction[] {
