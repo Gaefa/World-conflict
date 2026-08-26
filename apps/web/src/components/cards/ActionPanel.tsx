@@ -82,6 +82,20 @@ export function ActionPanel({
 
   return (
     <div className="border-t border-border-default bg-bg-primary/95">
+      {/* War is the one state change the panel must announce: three cards
+          quietly appear in the military lane and nothing else marks it. */}
+      {atWar && (
+        <div className="flex items-center justify-center gap-2 bg-severity-high/15 border-b border-severity-high/40 px-2 py-1">
+          <span className="text-severity-high text-[11px] font-bold uppercase tracking-wider">
+            ⚔ {t.war_mode_banner}
+          </span>
+          <span className="text-text-secondary text-[11px]">
+            {t.war_mode_against} {warEnemies.map(c => countryNames[c] ?? c).join(', ')}
+          </span>
+          <span className="text-text-muted text-[10px] italic">— {t.war_panel_tip}</span>
+        </div>
+      )}
+
       {flash && (
         <div className="text-center text-xs text-accent-amber py-0.5">{flash}</div>
       )}

@@ -82,6 +82,7 @@ export interface Translations {
   war_mode_tip: string;
   war_mode_more: string;
   war_mode_less: string;
+  war_panel_tip: string;
 
   // ── Economy tab ──
   econ_stat_gdp: string;
@@ -605,37 +606,12 @@ export interface Translations {
   leaderboard_military: string;
 
   // ── Onboarding / Tutorial ──
+  onb_step_of_fmt: string;
   onb_skip: string;
   onb_next: string;
   onb_prev: string;
   onb_start_playing: string;
-  onb_step_of_fmt: string;
-  onb_welcome_title: string;
-  onb_welcome_body: string;
-  onb_step_globe_title: string;
-  onb_step_globe_body: string;
-  onb_step_session_title: string;
-  onb_step_session_body: string;
-  onb_step_header_title: string;
-  onb_step_header_body: string;
-  onb_step_tabs_title: string;
-  onb_step_tabs_body: string;
-  onb_step_economy_title: string;
-  onb_step_economy_body: string;
-  onb_step_military_title: string;
-  onb_step_military_body: string;
-  onb_step_diplomacy_title: string;
-  onb_step_diplomacy_body: string;
-  onb_step_intel_title: string;
-  onb_step_intel_body: string;
-  onb_step_research_title: string;
-  onb_step_research_body: string;
-  onb_step_domestic_title: string;
-  onb_step_domestic_body: string;
-  onb_step_events_title: string;
-  onb_step_events_body: string;
-  onb_step_victory_title: string;
-  onb_step_victory_body: string;
+
   // New compact tutorial keys
   onb_goal_title: string;
   onb_goal_body: string;
