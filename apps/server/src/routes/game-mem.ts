@@ -1,11 +1,11 @@
-import type { FastifyPluginAsync } from 'fastify';
-import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState } from '@conflict-game/game-engine';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState, fogStateForPlayer } from '@conflict-game/game-engine';
 import type { AIState } from '@conflict-game/game-engine';
 import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
-import { getSession, getSessionPlayers, updateSession, updatePlayer } from './lobby-mem.js';
+import { getSession, getSessionPlayers, updateSession, updatePlayer, seatPlayer } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES, defaultTechBonuses } from '@conflict-game/shared-types';
-import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses } from '@conflict-game/game-logic';
+import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses, createRNG } from '@conflict-game/game-logic';
 
 /** Default intelligence state for a new country */
 function defaultIntel(): IntelligenceState {
@@ -27,7 +27,7 @@ function defaultTech(techLevel: number): TechnologyState {
   };
 }
 
-import { setStateResolver, setGameLoopRef } from '@conflict-game/game-transport';
+import { setStateResolver, setGameLoopRef, setSeatVerifier } from '@conflict-game/game-transport';
 
 const store = new InMemoryGameStateStore();
 
@@ -47,25 +47,43 @@ export { aiStates };
 // Let WS handler look up game state and game loop for pause/resume
 setStateResolver((sessionId) => store.getState(sessionId));
 setGameLoopRef(gameLoop);
+setSeatVerifier((sessionId, playerId, token) => seatPlayer(sessionId, token) === playerId);
 
 // Wire AI states to game loop
 gameLoop.setAIStates(aiStates);
 
 export { gameLoop, store };
 
+/** The caller's playerId, from the `Authorization: Bearer <seat token>` header. */
+function seatFromRequest(request: FastifyRequest, sessionId: string): string | null {
+  return seatPlayer(sessionId, request.headers.authorization?.replace(/^Bearer /, ''));
+}
+
+const fogRng = createRNG(Date.now());
+
+/** What this player may see: their own country clearly, the rest through fog. */
+function viewFor(state: GameState, playerId: string): GameState {
+  const countryCode = state.players.find(p => p.id === playerId)?.countryCode ?? null;
+  return fogStateForPlayer(state, countryCode, fogRng);
+}
+
 export const gameMemRoutes: FastifyPluginAsync = async (app) => {
-  // GET /state/:sessionId
+  // GET /state/:sessionId — the caller's fogged view
   app.get<{ Params: { sessionId: string } }>('/state/:sessionId', async (request, reply) => {
+    const playerId = seatFromRequest(request, request.params.sessionId);
+    if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
     const state = store.getState(request.params.sessionId);
     if (!state) return reply.status(404).send({ error: 'Game not active' });
-    return { state };
+    return { state: viewFor(state, playerId) };
   });
 
   // GET /events/:sessionId
   app.get<{ Params: { sessionId: string } }>('/events/:sessionId', async (request, reply) => {
+    const playerId = seatFromRequest(request, request.params.sessionId);
+    if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
     const state = store.getState(request.params.sessionId);
     if (!state) return reply.status(404).send({ error: 'Game not active' });
-    return { events: state.events.slice(-50) };
+    return { events: viewFor(state, playerId).events.slice(-50) };
   });
 
   // POST /sessions/:id/start
@@ -73,6 +91,9 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
     const sessionId = request.params.id;
     const session = getSession(sessionId);
     if (!session) return reply.status(404).send({ error: 'Session not found' });
+    const playerId = seatFromRequest(request, sessionId);
+    if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
+    if (playerId !== session.hostPlayerId) return reply.status(403).send({ error: 'Only the host can start the game' });
     if (session.status !== 'lobby') return reply.status(400).send({ error: 'Session not in lobby' });
 
     const sessionPlayers = getSessionPlayers(sessionId);
@@ -149,7 +170,10 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
   // POST /sessions/:id/select-country
   app.post<{ Params: { id: string } }>('/sessions/:id/select-country', async (request, reply) => {
     const { id: sessionId } = request.params;
-    const { playerId, countryCode } = request.body as { playerId: string; countryCode: string };
+    const playerId = seatFromRequest(request, sessionId);
+    if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
+    if (getSession(sessionId)?.status !== 'lobby') return reply.status(400).send({ error: 'Session not in lobby' });
+    const { countryCode } = request.body as { countryCode: string };
 
     if (!SEED_COUNTRIES.find(c => c.code === countryCode)) {
       return reply.status(400).send({ error: 'Invalid country code' });

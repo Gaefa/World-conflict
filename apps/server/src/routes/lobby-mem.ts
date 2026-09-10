@@ -29,6 +29,21 @@ interface PlayerRecord {
 
 const sessions = new Map<string, SessionRecord>();
 const playersList = new Map<string, PlayerRecord>();
+/** Seat token → playerId. playerIds are visible to every player in the game
+ *  state, so they can't double as credentials. */
+const seatTokens = new Map<string, string>();
+
+function issueSeat(playerId: string): string {
+  const token = randomUUID();
+  seatTokens.set(token, playerId);
+  return token;
+}
+
+/** The playerId holding this seat token in this session, or null. */
+export function seatPlayer(sessionId: string, token: string | undefined): string | null {
+  const playerId = token ? seatTokens.get(token) : undefined;
+  return playerId && playersList.get(playerId)?.sessionId === sessionId ? playerId : null;
+}
 
 export function getSession(id: string) { return sessions.get(id); }
 export function getSessionPlayers(sessionId: string) {
@@ -124,7 +139,7 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
     sessions.set(sessionId, session);
     playersList.set(playerId, player);
 
-    return reply.status(201).send({ session, player });
+    return reply.status(201).send({ session, player, token: issueSeat(playerId) });
   });
 
   // POST /sessions/:id/join
@@ -153,7 +168,7 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
     };
     playersList.set(playerId, player);
 
-    return reply.status(201).send({ player });
+    return reply.status(201).send({ player, token: issueSeat(playerId) });
   });
 
   // GET /sessions/:id

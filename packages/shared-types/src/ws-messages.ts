@@ -5,10 +5,9 @@ import type { GameEvent } from './events';
 /** Messages from client to server */
 export type ClientMessage =
   | { type: 'player_action'; payload: PlayerAction }
-  | { type: 'join_session'; payload: { sessionId: string; playerId: string } }
+  | { type: 'join_session'; payload: { sessionId: string; playerId: string; token: string } }
   | { type: 'leave_session' }
   | { type: 'chat_message'; payload: { text: string; channel: 'global' | 'alliance' } }
-  | { type: 'select_country'; payload: { countryCode: string } }
   | { type: 'ready'; payload: { ready: boolean } }
   | { type: 'toggle_pause' }
   | { type: 'ping' };

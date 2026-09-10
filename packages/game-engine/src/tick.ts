@@ -332,12 +332,7 @@ export function computePlayerDelta(
     }
   }
 
-  const playerEvents = newEvents.filter(e => {
-    if (e.type === 'spy_caught' || e.type === 'spy_success' || e.type === 'intel_breakthrough') {
-      return e.involvedCountries.includes(playerCountryCode ?? '');
-    }
-    return true;
-  });
+  const playerEvents = newEvents.filter(e => isVisibleTo(e, playerCountryCode));
 
   return {
     tick: state.session.currentTick,
@@ -348,6 +343,27 @@ export function computePlayerDelta(
     tensionIndex: state.tensionIndex,
     resourceMarket: state.resourceMarket,
   };
+}
+
+/** Spy results are private to the countries involved; everything else is public. */
+function isVisibleTo(event: GameEvent, playerCountryCode: string | null): boolean {
+  if (event.type === 'spy_caught' || event.type === 'spy_success' || event.type === 'intel_breakthrough') {
+    return event.involvedCountries.includes(playerCountryCode ?? '');
+  }
+  return true;
+}
+
+/**
+ * Full-state view for one player (initial load): every foreign country
+ * fogged by the observer's intel, private events filtered out.
+ */
+export function fogStateForPlayer(state: GameState, playerCountryCode: string | null, rng: RNG): GameState {
+  const playerIntel = playerCountryCode ? state.countries[playerCountryCode]?.intel : undefined;
+  const countries: GameState['countries'] = {};
+  for (const [code, country] of Object.entries(state.countries)) {
+    countries[code] = applyFog(country, playerIntel, playerCountryCode ?? '', rng);
+  }
+  return { ...state, countries, events: state.events.filter(e => isVisibleTo(e, playerCountryCode)) };
 }
 
 // ── helpers (duplicated from loop.ts; kept pure and local) ──

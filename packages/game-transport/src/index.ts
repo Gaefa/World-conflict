@@ -17,13 +17,25 @@ export function setStateResolver(resolver: (sessionId: string) => GameState | nu
   stateResolver = resolver;
 }
 
+/** Seat check — set by game-mem.ts. playerIds are visible to everyone in the
+ *  game state, so joining a seat also needs that seat's secret token. */
+let seatVerifier: ((sessionId: string, playerId: string, token: string) => boolean) | null = null;
+
+export function setSeatVerifier(verifier: (sessionId: string, playerId: string, token: string) => boolean): void {
+  seatVerifier = verifier;
+}
+
 interface Connection {
   socket: WebSocket;
   sessionId: string;
-  countryCode: string | null;
 }
 
 const connections = new Map<string, Connection>();
+
+/** A player's country lives in the game state only — never on the socket. */
+function countryOf(sessionId: string, playerId: string): string | null {
+  return stateResolver?.(sessionId)?.players.find(p => p.id === playerId)?.countryCode || null;
+}
 
 export function wsHandler(socket: WebSocket, request: FastifyRequest) {
   let playerId: string | null = null;
@@ -35,23 +47,19 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
 
       switch (message.type) {
         case 'join_session': {
-          playerId = message.payload.playerId;
-          sessionId = message.payload.sessionId;
-          // Auto-detect country from game state
-          let detectedCountry: string | null = null;
-          if (stateResolver) {
-            const gs = stateResolver(sessionId);
-            if (gs) {
-              const player = gs.players.find(p => p.id === playerId);
-              if (player?.countryCode) detectedCountry = player.countryCode;
-            }
+          const { sessionId: wantedSession, playerId: wantedPlayer, token } = message.payload;
+          if (!seatVerifier?.(wantedSession, wantedPlayer, token)) {
+            send(socket, { type: 'error', payload: { code: 'UNAUTHORIZED', message: 'Invalid seat token' } });
+            break;
           }
-          connections.set(playerId, { socket, sessionId, countryCode: detectedCountry });
+          playerId = wantedPlayer;
+          sessionId = wantedSession;
+          connections.set(playerId, { socket, sessionId });
           send(socket, {
             type: 'session_status',
             payload: { status: 'joined', message: `Joined session ${sessionId}` },
           });
-          console.log(`Player ${playerId} joined session ${sessionId} (country: ${detectedCountry || 'none'})`);
+          console.log(`Player ${playerId} joined session ${sessionId}`);
           break;
         }
 
@@ -68,8 +76,7 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
             send(socket, { type: 'error', payload: { code: 'NOT_IN_SESSION', message: 'Join a session first' } });
             break;
           }
-          const conn = connections.get(playerId);
-          const countryCode = conn?.countryCode;
+          const countryCode = countryOf(sessionId, playerId);
           if (!countryCode) {
             send(socket, { type: 'error', payload: { code: 'NO_COUNTRY', message: 'Select a country first' } });
             break;
@@ -106,48 +113,13 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
           }
           break;
 
-        case 'select_country': {
-          // Without these guards a client could claim any country at any
-          // time — including mid-game, including one already being played.
-          if (!playerId || !sessionId) {
-            send(socket, { type: 'error', payload: { code: 'NOT_IN_SESSION', message: 'Join a session first' } });
-            break;
-          }
-          const conn = connections.get(playerId);
-          if (!conn) break;
-
-          const wanted: string = message.payload.countryCode;
-          const gs = stateResolver?.(sessionId) ?? null;
-
-          if (gs && gs.session.status === 'active') {
-            send(socket, {
-              type: 'error',
-              payload: { code: 'GAME_STARTED', message: 'Cannot change country after the game has started' },
-            });
-            break;
-          }
-
-          const takenBy = [...connections.entries()].find(
-            ([pid, c]) => pid !== playerId && c.sessionId === sessionId && c.countryCode === wanted,
-          );
-          if (takenBy) {
-            send(socket, {
-              type: 'error',
-              payload: { code: 'COUNTRY_TAKEN', message: `${wanted} is already taken` },
-            });
-            break;
-          }
-
-          conn.countryCode = wanted;
-          send(socket, {
-            type: 'session_status',
-            payload: { status: 'country_selected', message: `Selected ${wanted}` },
-          });
-          break;
-        }
-
         case 'toggle_pause': {
-          if (!sessionId || !gameLoopRef) break;
+          if (!sessionId || !playerId || !gameLoopRef) break;
+          // Pausing stops the clock for everyone, so it's the host's call.
+          if (stateResolver?.(sessionId)?.session.hostPlayerId !== playerId) {
+            send(socket, { type: 'error', payload: { code: 'NOT_HOST', message: 'Only the host can pause' } });
+            break;
+          }
           const paused = gameLoopRef.isPaused(sessionId);
           if (paused) {
             gameLoopRef.resume(sessionId);
@@ -216,7 +188,7 @@ export function getPlayerConnections(sessionId: string): { playerId: string; cou
   const result: { playerId: string; countryCode: string | null }[] = [];
   for (const [pid, conn] of connections) {
     if (conn.sessionId === sessionId) {
-      result.push({ playerId: pid, countryCode: conn.countryCode });
+      result.push({ playerId: pid, countryCode: countryOf(sessionId, pid) });
     }
   }
   return result;

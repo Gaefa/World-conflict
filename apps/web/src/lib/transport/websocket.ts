@@ -49,6 +49,8 @@ export class WebSocketTransport implements GameTransport {
   private session: { sessionId: string; playerId: string; handlers: TransportHandlers } | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private retryAttempt = 0;
+  /** Seat secret from create/join — the server refuses this seat without it. */
+  private token: string | null = null;
   private readonly apiUrl: string;
   private readonly wsUrl: string;
 
@@ -59,6 +61,10 @@ export class WebSocketTransport implements GameTransport {
     this.wsUrl = options.wsUrl ?? (options.apiUrl ? deriveWsUrl(options.apiUrl) : DEFAULT_WS_URL);
   }
 
+  private authHeader(): Record<string, string> {
+    return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  }
+
   async createSession(name: string, playerName: string, options?: SessionOptions) {
     const res = await fetch(`${this.apiUrl}/api/game/sessions`, {
       method: 'POST',
@@ -67,6 +73,7 @@ export class WebSocketTransport implements GameTransport {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
+    this.token = data.token;
     return { sessionId: data.session.id, playerId: data.player.id };
   }
 
@@ -78,24 +85,28 @@ export class WebSocketTransport implements GameTransport {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
+    this.token = data.token;
     return { playerId: data.player.id };
   }
 
-  async selectCountry(sessionId: string, playerId: string, countryCode: string) {
+  async selectCountry(sessionId: string, _playerId: string, countryCode: string) {
     const res = await fetch(`${this.apiUrl}/api/game/sessions/${sessionId}/select-country`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerId, countryCode }),
+      headers: { 'Content-Type': 'application/json', ...this.authHeader() },
+      body: JSON.stringify({ countryCode }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
   }
 
   async startGame(sessionId: string, _playerId: string): Promise<GameState> {
-    const res = await fetch(`${this.apiUrl}/api/game/sessions/${sessionId}/start`, { method: 'POST' });
+    const res = await fetch(`${this.apiUrl}/api/game/sessions/${sessionId}/start`, {
+      method: 'POST',
+      headers: this.authHeader(),
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    const stateRes = await fetch(`${this.apiUrl}/api/game/state/${sessionId}`);
+    const stateRes = await fetch(`${this.apiUrl}/api/game/state/${sessionId}`, { headers: this.authHeader() });
     const stateData = await stateRes.json();
     return stateData.state as GameState;
   }
@@ -115,7 +126,7 @@ export class WebSocketTransport implements GameTransport {
     ws.onopen = () => {
       this.retryAttempt = 0;
       handlers.onConnected?.();
-      ws.send(JSON.stringify({ type: 'join_session', payload: { sessionId, playerId } }));
+      ws.send(JSON.stringify({ type: 'join_session', payload: { sessionId, playerId, token: this.token } }));
     };
 
     ws.onmessage = (event) => {

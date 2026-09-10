@@ -9,6 +9,7 @@ export { processAction } from './action-processor';
 export {
   runTick,
   computePlayerDelta,
+  fogStateForPlayer,
   type TickInput,
   type TickOutput,
   type ActionOutcome,
