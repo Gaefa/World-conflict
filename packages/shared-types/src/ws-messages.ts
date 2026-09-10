@@ -12,6 +12,10 @@ export type ClientMessage =
   | { type: 'toggle_pause' }
   | { type: 'ping' };
 
+/** Multiplayer pauses: each player gets a few, and each ends by itself. */
+export const PAUSES_PER_PLAYER = 2;
+export const PAUSE_MAX_MS = 60_000;
+
 /** Messages from server to client */
 export type ServerMessage =
   | { type: 'game_state'; payload: GameState }
@@ -20,6 +24,6 @@ export type ServerMessage =
   | { type: 'game_event'; payload: GameEvent }
   | { type: 'player_update'; payload: Player }
   | { type: 'chat_message'; payload: { from: string; text: string; channel: string; timestamp: string } }
-  | { type: 'session_status'; payload: { status: string; message: string } }
+  | { type: 'session_status'; payload: { status: string; message: string; /** who paused */ playerId?: string } }
   | { type: 'error'; payload: { code: string; message: string } }
   | { type: 'pong' };

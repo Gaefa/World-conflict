@@ -33,6 +33,27 @@ export const en: Translations = {
   session_starting: 'Starting...',
   session_fill_fields: 'Fill in all fields',
 
+  // Multiplayer lobby
+  mp_create: 'Create lobby',
+  mp_join: 'Join by code',
+  mp_join_button: 'Join',
+  mp_server_url: 'Server address',
+  mp_server_url_hint: 'Leave empty for the default server. On a local network, use the host address.',
+  mp_invite_code: 'Invite code',
+  mp_share_code: 'Send this code to the people you play with',
+  mp_lan_urls: 'Server address for players on your network:',
+  lobby_title: 'Lobby',
+  lobby_players: 'Players',
+  lobby_host: 'host',
+  lobby_you: 'you',
+  lobby_picking: 'picking a country…',
+  lobby_waiting_host: 'Waiting for the host to start',
+  lobby_waiting_players: 'Waiting for everyone to pick a country',
+  lobby_closed: 'The host left — lobby closed',
+  lobby_lost: 'Lost connection to the lobby',
+  pause_not_yours: 'Only the player who paused can resume. The pause ends by itself within a minute.',
+  pause_none_left: 'No pauses left',
+
   // AI
   ai_opponents: 'AI Opponents',
   ai_difficulty: 'Difficulty',

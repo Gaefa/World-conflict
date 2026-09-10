@@ -1,5 +1,5 @@
 import type { GameState, PlayerAction } from '@conflict-game/shared-types';
-import type { GameTransport, SessionOptions, TransportHandlers } from './types';
+import type { GameTransport, LobbyView, SessionOptions, TransportHandlers } from './types';
 
 const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3002/ws';
@@ -77,16 +77,28 @@ export class WebSocketTransport implements GameTransport {
     return { sessionId: data.session.id, playerId: data.player.id };
   }
 
-  async joinSession(sessionId: string, playerName: string) {
-    const res = await fetch(`${this.apiUrl}/api/game/sessions/${sessionId}/join`, {
+  async joinSession(code: string, playerName: string) {
+    const res = await fetch(`${this.apiUrl}/api/game/sessions/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerName }),
+      body: JSON.stringify({ code, playerName }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     this.token = data.token;
-    return { playerId: data.player.id };
+    return { sessionId: data.sessionId, playerId: data.player.id };
+  }
+
+  async getLobby(sessionId: string): Promise<LobbyView> {
+    const res = await fetch(`${this.apiUrl}/api/game/sessions/${sessionId}`, { headers: this.authHeader() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return {
+      code: data.session.code,
+      status: data.session.status,
+      hostPlayerId: data.session.hostPlayerId,
+      players: data.players,
+    };
   }
 
   async selectCountry(sessionId: string, _playerId: string, countryCode: string) {
@@ -106,9 +118,14 @@ export class WebSocketTransport implements GameTransport {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    const stateRes = await fetch(`${this.apiUrl}/api/game/state/${sessionId}`, { headers: this.authHeader() });
-    const stateData = await stateRes.json();
-    return stateData.state as GameState;
+    return this.fetchState(sessionId);
+  }
+
+  async fetchState(sessionId: string): Promise<GameState> {
+    const res = await fetch(`${this.apiUrl}/api/game/state/${sessionId}`, { headers: this.authHeader() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data.state as GameState;
   }
 
   connect(sessionId: string, playerId: string, handlers: TransportHandlers) {

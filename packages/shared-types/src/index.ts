@@ -6,5 +6,5 @@ export * from './events';
 export * from './actions';
 export * from './intelligence';
 export * from './technology';
-export type * from './ws-messages';
+export * from './ws-messages';
 export { SEED_COUNTRIES } from './seed-countries';

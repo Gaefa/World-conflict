@@ -1,14 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import type { AddressInfo } from 'node:net';
+import { PAUSE_MAX_MS } from '@conflict-game/shared-types';
 import { wsHandler } from '@conflict-game/game-transport';
 import { lobbyMemRoutes } from '../src/routes/lobby-mem';
 import { gameMemRoutes, gameLoop, store } from '../src/routes/game-mem';
 
 /**
- * Two real WebSocket clients against the in-memory server. Each check here
- * was a live exploit found by driving two clients by hand: claiming another
+ * Real WebSocket clients against the in-memory server. The seat checks here
+ * were live exploits found by driving two clients by hand: claiming another
  * player's country, hijacking a seat with a playerId leaked through the
  * state, reading the unfogged state, pausing everyone.
  */
@@ -58,7 +59,9 @@ async function connect() {
   };
 }
 
-const settle = () => new Promise((r) => setTimeout(r, 100));
+// Captured before any test fakes timers: settling always needs real time.
+const realSetTimeout = globalThis.setTimeout;
+const settle = () => new Promise((r) => realSetTimeout(r, 100));
 
 /** Run one tick now instead of waiting 10 s for the interval. Settles first
  *  so messages sent just before have reached the server's queue. */
@@ -68,15 +71,22 @@ async function tick(sessionId: string) {
   await settle();
 }
 
-async function lobby() {
+async function createLobby() {
   const created = await api('/sessions', { body: { name: 'test', playerName: 'Host' } });
-  const sessionId: string = created.data.session.id;
-  const host = { id: created.data.player.id as string, token: created.data.token as string };
-  const joined = await api(`/sessions/${sessionId}/join`, { body: { playerName: 'Guest' } });
+  return {
+    sessionId: created.data.session.id as string,
+    code: created.data.session.code as string,
+    host: { id: created.data.player.id as string, token: created.data.token as string },
+  };
+}
+
+async function lobby() {
+  const l = await createLobby();
+  const joined = await api('/sessions/join', { body: { code: l.code, playerName: 'Guest' } });
   const guest = { id: joined.data.player.id as string, token: joined.data.token as string };
-  await api(`/sessions/${sessionId}/select-country`, { body: { countryCode: 'US' }, token: host.token });
-  await api(`/sessions/${sessionId}/select-country`, { body: { countryCode: 'CN' }, token: guest.token });
-  return { sessionId, host, guest };
+  await api(`/sessions/${l.sessionId}/select-country`, { body: { countryCode: 'US' }, token: l.host.token });
+  await api(`/sessions/${l.sessionId}/select-country`, { body: { countryCode: 'CN' }, token: guest.token });
+  return { ...l, guest };
 }
 
 async function twoPlayerGame() {
@@ -93,6 +103,62 @@ async function twoPlayerGame() {
   return { ...l, hostWs, guestWs };
 }
 
+describe('lobby', () => {
+  it('joins only with a valid invite code, in any letter case', async () => {
+    const { sessionId, code } = await createLobby();
+    expect(code).toMatch(/^[A-Z2-9]{6}$/);
+
+    expect((await api('/sessions/join', { body: { code: 'ZZZZZZ', playerName: 'X' } })).status).toBe(404);
+    const joined = await api('/sessions/join', { body: { code: code.toLowerCase(), playerName: 'Guest' } });
+    expect(joined.status).toBe(201);
+    expect(joined.data.sessionId).toBe(sessionId);
+  });
+
+  it('shows seat holders who picked what', async () => {
+    const { sessionId, host, guest } = await lobby();
+    expect((await api(`/sessions/${sessionId}`)).status).toBe(401);
+
+    const { data } = await api(`/sessions/${sessionId}`, { token: guest.token });
+    expect(data.session.hostPlayerId).toBe(host.id);
+    expect(data.players.map((p: any) => [p.name, p.countryCode])).toEqual([['Host', 'US'], ['Guest', 'CN']]);
+  });
+
+  it('refuses a country that is already taken', async () => {
+    const { sessionId, guest } = await lobby();
+    const res = await api(`/sessions/${sessionId}/select-country`, { body: { countryCode: 'US' }, token: guest.token });
+    expect(res.status).toBe(400);
+  });
+
+  it('drops a player who stopped polling, so they cannot block the start', async () => {
+    const { sessionId, code, host } = await createLobby();
+    const joined = await api('/sessions/join', { body: { code, playerName: 'Ghost' } });
+    await api(`/sessions/${sessionId}/select-country`, { body: { countryCode: 'US' }, token: host.token });
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(Date.now() + 31_000);
+      const { data } = await api(`/sessions/${sessionId}`, { token: host.token });
+      expect(data.players.map((p: any) => p.name)).toEqual(['Host']);
+      expect((await api(`/sessions/${sessionId}`, { token: joined.data.token })).status).toBe(401);
+      expect((await api(`/sessions/${sessionId}/start`, { method: 'POST', token: host.token })).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('closes the lobby when the host goes quiet', async () => {
+    const { sessionId, guest } = await lobby();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(Date.now() + 31_000);
+      const { data } = await api(`/sessions/${sessionId}`, { token: guest.token });
+      expect(data.session.status).toBe('finished');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('multiplayer seats', () => {
   it('a player acts only for the country of their own seat', async () => {
     const { sessionId, guestWs } = await twoPlayerGame();
@@ -103,12 +169,6 @@ describe('multiplayer seats', () => {
     const state = store.getState(sessionId)!;
     expect(state.countries.CN.economy.taxRate).toBe(0.9);
     expect(state.countries.US.economy.taxRate).not.toBe(0.9);
-  });
-
-  it('refuses a country that is already taken', async () => {
-    const { sessionId, guest } = await lobby();
-    const res = await api(`/sessions/${sessionId}/select-country`, { body: { countryCode: 'US' }, token: guest.token });
-    expect(res.status).toBe(400);
   });
 
   it('join_session needs the seat token, so a leaked playerId cannot hijack a seat', async () => {
@@ -147,20 +207,6 @@ describe('multiplayer seats', () => {
     expect(data.state.countries.US.resourceState).toEqual({});
   });
 
-  it('only the host can pause', async () => {
-    const { sessionId, hostWs, guestWs } = await twoPlayerGame();
-
-    guestWs.send({ type: 'toggle_pause' });
-    await settle();
-    expect(guestWs.of('error').map((m) => m.payload.code)).toContain('NOT_HOST');
-    expect(store.getState(sessionId)!.session.status).toBe('active');
-
-    hostWs.send({ type: 'toggle_pause' });
-    await settle();
-    expect(store.getState(sessionId)!.session.status).toBe('paused');
-    expect(guestWs.of('session_status').some((m) => m.payload.status === 'paused')).toBe(true);
-  });
-
   it('a reconnect takes over the seat from the old socket', async () => {
     const { sessionId, host, hostWs } = await twoPlayerGame();
     const again = await connect();
@@ -171,5 +217,46 @@ describe('multiplayer seats', () => {
     await tick(sessionId);
     expect(again.of('state_delta')).toHaveLength(1);
     expect(hostWs.of('state_delta')).toHaveLength(oldDeltas);
+  });
+});
+
+describe('pauses', () => {
+  it('each player has two; only whoever paused can resume early', async () => {
+    const { sessionId, guest, hostWs, guestWs } = await twoPlayerGame();
+    const status = () => store.getState(sessionId)!.session.status;
+    const toggle = async (ws: typeof hostWs) => { ws.send({ type: 'toggle_pause' }); await settle(); };
+
+    await toggle(guestWs);
+    expect(status()).toBe('paused');
+    expect(hostWs.of('session_status').at(-1)!.payload).toMatchObject({ status: 'paused', playerId: guest.id });
+
+    await toggle(hostWs);
+    expect(hostWs.of('error').map((m) => m.payload.code)).toContain('NOT_YOUR_PAUSE');
+    expect(status()).toBe('paused');
+
+    await toggle(guestWs); // resume own pause
+    expect(status()).toBe('active');
+    await toggle(guestWs); // second pause
+    await toggle(guestWs); // resume
+    await toggle(guestWs); // third — over budget
+    expect(guestWs.of('error').map((m) => m.payload.code)).toContain('NO_PAUSES_LEFT');
+    expect(status()).toBe('active');
+  });
+
+  it('a pause ends by itself', async () => {
+    const { sessionId, hostWs, guestWs } = await twoPlayerGame();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      hostWs.send({ type: 'toggle_pause' });
+      await settle();
+      expect(store.getState(sessionId)!.session.status).toBe('paused');
+
+      vi.advanceTimersByTime(PAUSE_MAX_MS);
+      await settle();
+      expect(store.getState(sessionId)!.session.status).toBe('active');
+      expect(guestWs.of('session_status').at(-1)!.payload.status).toBe('resumed');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

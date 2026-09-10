@@ -12,31 +12,8 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
 
-// The packaged desktop app runs in in-memory mode (no DATABASE_URL), so the
-// Drizzle / Postgres code paths are never executed. We stub those modules
-// out at bundle time to keep the binary self-contained and avoid shipping
-// their (heavy, native-binding) node_modules trees.
-const STUB = resolve(__dirname, 'build-stubs/empty.cjs');
-const stubPatterns = [
-  /^drizzle-orm(\/.*)?$/,
-  /^postgres$/,
-];
-
-const stubPlugin = {
-  name: 'stub-db-packages',
-  setup(b) {
-    b.onResolve({ filter: /.*/ }, (args) => {
-      if (stubPatterns.some((re) => re.test(args.path))) {
-        return { path: STUB };
-      }
-      return null;
-    });
-  },
-};
-
-// Externals: nothing. Everything is bundled or stubbed. The only requires
-// that survive at runtime are Node's built-ins, which esbuild handles
-// transparently.
+// Externals: nothing. Everything is bundled. The only requires that survive
+// at runtime are Node's built-ins, which esbuild handles transparently.
 const external = [];
 
 mkdirSync(resolve(__dirname, 'dist'), { recursive: true });
@@ -48,7 +25,6 @@ await build({
   target: 'node20',
   format: 'esm',
   outfile: resolve(__dirname, 'dist/index.js'),
-  plugins: [stubPlugin],
   external,
   sourcemap: false,
   logLevel: 'info',

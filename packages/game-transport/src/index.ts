@@ -1,6 +1,7 @@
 import type { FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import type { ClientMessage, ServerMessage, GameState } from '@conflict-game/shared-types';
+import { PAUSES_PER_PLAYER, PAUSE_MAX_MS } from '@conflict-game/shared-types';
 import { enqueueAction, type GameLoop } from '@conflict-game/game-engine';
 
 /** Resolver to look up game loop — set by game-mem.ts on startup */
@@ -32,9 +33,26 @@ interface Connection {
 
 const connections = new Map<string, Connection>();
 
+/** The running pause per session: who took it and the timer that ends it. */
+const activePauses = new Map<string, { playerId: string; timer: ReturnType<typeof setTimeout> }>();
+/** Pauses each player has used this game. */
+const pausesUsed = new Map<string, number>();
+
 /** A player's country lives in the game state only — never on the socket. */
 function countryOf(sessionId: string, playerId: string): string | null {
   return stateResolver?.(sessionId)?.players.find(p => p.id === playerId)?.countryCode || null;
+}
+
+/** End a session's pause — early by whoever took it, or by its timer. */
+function resumeSession(sessionId: string): void {
+  const pause = activePauses.get(sessionId);
+  if (pause) clearTimeout(pause.timer);
+  activePauses.delete(sessionId);
+  if (!gameLoopRef?.resume(sessionId)) return;
+  broadcastToSession(sessionId, {
+    type: 'session_status',
+    payload: { status: 'resumed', message: 'Game resumed' },
+  });
 }
 
 export function wsHandler(socket: WebSocket, request: FastifyRequest) {
@@ -115,25 +133,35 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
 
         case 'toggle_pause': {
           if (!sessionId || !playerId || !gameLoopRef) break;
-          // Pausing stops the clock for everyone, so it's the host's call.
-          if (stateResolver?.(sessionId)?.session.hostPlayerId !== playerId) {
-            send(socket, { type: 'error', payload: { code: 'NOT_HOST', message: 'Only the host can pause' } });
+
+          if (gameLoopRef.isPaused(sessionId)) {
+            // Only whoever paused may resume early — otherwise a rival could
+            // cancel every pause instantly. The timer resumes it regardless.
+            if (activePauses.get(sessionId)?.playerId !== playerId) {
+              send(socket, { type: 'error', payload: { code: 'NOT_YOUR_PAUSE', message: 'Only the player who paused can resume' } });
+              break;
+            }
+            resumeSession(sessionId);
             break;
           }
-          const paused = gameLoopRef.isPaused(sessionId);
-          if (paused) {
-            gameLoopRef.resume(sessionId);
-            broadcastToSession(sessionId, {
-              type: 'session_status',
-              payload: { status: 'resumed', message: 'Game resumed' },
-            });
-          } else {
-            gameLoopRef.pause(sessionId);
-            broadcastToSession(sessionId, {
-              type: 'session_status',
-              payload: { status: 'paused', message: 'Game paused' },
-            });
+
+          if (stateResolver?.(sessionId)?.session.status !== 'active') break;
+          const used = pausesUsed.get(playerId) ?? 0;
+          if (used >= PAUSES_PER_PLAYER) {
+            send(socket, { type: 'error', payload: { code: 'NO_PAUSES_LEFT', message: 'No pauses left' } });
+            break;
           }
+          gameLoopRef.pause(sessionId);
+          pausesUsed.set(playerId, used + 1);
+          const pausedSession = sessionId;
+          activePauses.set(pausedSession, {
+            playerId,
+            timer: setTimeout(() => resumeSession(pausedSession), PAUSE_MAX_MS),
+          });
+          broadcastToSession(pausedSession, {
+            type: 'session_status',
+            payload: { status: 'paused', message: 'Game paused', playerId },
+          });
           break;
         }
 

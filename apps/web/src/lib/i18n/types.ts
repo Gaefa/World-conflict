@@ -34,6 +34,27 @@ export interface Translations {
   session_starting: string;
   session_fill_fields: string;
 
+  // ── Multiplayer lobby ──
+  mp_create: string;
+  mp_join: string;
+  mp_join_button: string;
+  mp_server_url: string;
+  mp_server_url_hint: string;
+  mp_invite_code: string;
+  mp_share_code: string;
+  mp_lan_urls: string;
+  lobby_title: string;
+  lobby_players: string;
+  lobby_host: string;
+  lobby_you: string;
+  lobby_picking: string;
+  lobby_waiting_host: string;
+  lobby_waiting_players: string;
+  lobby_closed: string;
+  lobby_lost: string;
+  pause_not_yours: string;
+  pause_none_left: string;
+
   // ── AI setup ──
   ai_opponents: string;
   ai_difficulty: string;

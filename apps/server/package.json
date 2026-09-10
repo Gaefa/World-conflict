@@ -8,10 +8,7 @@
     "build": "node build.mjs",
     "build:types": "tsc --emitDeclarationOnly",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
-    "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate",
-    "db:seed": "tsx src/db/seed.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@conflict-game/shared-types": "*",
@@ -22,14 +19,11 @@
     "fastify": "^5.2.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/websocket": "^11.0.0",
-    "drizzle-orm": "^0.39.0",
-    "postgres": "^3.4.5",
     "zod": "^3.24.0",
     "nanoid": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "drizzle-kit": "^0.30.0",
     "esbuild": "^0.19.12",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2"

@@ -33,6 +33,27 @@ export const ru: Translations = {
   session_starting: 'Запуск...',
   session_fill_fields: 'Заполните все поля',
 
+  // Мультиплеерное лобби
+  mp_create: 'Создать лобби',
+  mp_join: 'Войти по коду',
+  mp_join_button: 'Войти',
+  mp_server_url: 'Адрес сервера',
+  mp_server_url_hint: 'Пусто — сервер по умолчанию. В локальной сети — адрес хоста.',
+  mp_invite_code: 'Код приглашения',
+  mp_share_code: 'Отправьте этот код тем, с кем играете',
+  mp_lan_urls: 'Адрес сервера для игроков в вашей сети:',
+  lobby_title: 'Лобби',
+  lobby_players: 'Игроки',
+  lobby_host: 'хост',
+  lobby_you: 'вы',
+  lobby_picking: 'выбирает страну…',
+  lobby_waiting_host: 'Ждём, пока хост начнёт игру',
+  lobby_waiting_players: 'Ждём, пока все выберут страну',
+  lobby_closed: 'Хост вышел — лобби закрыто',
+  lobby_lost: 'Нет связи с лобби',
+  pause_not_yours: 'Снять паузу может только тот, кто её поставил. Через минуту она закончится сама.',
+  pause_none_left: 'Паузы закончились',
+
   // AI
   ai_opponents: 'AI-противники',
   ai_difficulty: 'Сложность',

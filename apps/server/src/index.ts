@@ -2,10 +2,11 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { wsHandler } from '@conflict-game/game-transport';
+import { lobbyMemRoutes } from './routes/lobby-mem.js';
+import { gameMemRoutes } from './routes/game-mem.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
-const USE_DB = !!process.env.DATABASE_URL;
 
 async function main() {
   const app = Fastify({ logger: true });
@@ -17,21 +18,9 @@ async function main() {
   await app.register(cors, { origin: '*' });
   await app.register(websocket);
 
-  if (USE_DB) {
-    // PostgreSQL mode
-    const { lobbyRoutes } = await import('./routes/lobby.js');
-    const { gameRoutes } = await import('./routes/game.js');
-    await app.register(lobbyRoutes, { prefix: '/api/game' });
-    await app.register(gameRoutes, { prefix: '/api/game' });
-    console.log('📦 Using PostgreSQL database');
-  } else {
-    // In-memory mode (no DB needed)
-    const { lobbyMemRoutes } = await import('./routes/lobby-mem.js');
-    const { gameMemRoutes } = await import('./routes/game-mem.js');
-    await app.register(lobbyMemRoutes, { prefix: '/api/game' });
-    await app.register(gameMemRoutes, { prefix: '/api/game' });
-    console.log('🧠 Using in-memory storage (no database)');
-  }
+  // All state lives in memory: sessions are short and end with the process.
+  await app.register(lobbyMemRoutes, { prefix: '/api/game' });
+  await app.register(gameMemRoutes, { prefix: '/api/game' });
 
   // WebSocket
   app.get('/ws', { websocket: true }, wsHandler);

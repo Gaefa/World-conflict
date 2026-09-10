@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import type { GameState, GameStateDelta, PlayerAction, ActionResult, DiplomacyType } from '@conflict-game/shared-types';
+import { PAUSES_PER_PLAYER } from '@conflict-game/shared-types';
 import { playTick, playActionSuccess, playActionFailed, playEventSound } from '@/lib/sounds';
 import { WebSocketTransport, InMemoryTransport, type GameTransport } from '@/lib/transport';
 import { saveGame as idbSaveGame, type SaveSnapshot } from '@/lib/save-store';
@@ -34,6 +35,10 @@ interface GameStore {
   // UI state
   selectedCountryCode: string | null;
   isPaused: boolean;
+  /** Who took the running pause (multiplayer); null in singleplayer. */
+  pausedBy: string | null;
+  /** Pauses this player has left in multiplayer; null = unlimited (singleplayer). */
+  pausesLeft: number | null;
   lastActionResult: ActionResult | null;
   /** Recent answers to the player's outgoing proposals (for toast display). */
   proposalOutcomes: ProposalOutcome[];
@@ -42,9 +47,11 @@ interface GameStore {
   // Actions
   setTransport: (transport: GameTransport) => void;
   createSession: (name: string, playerName: string, options?: { allowAI?: boolean; aiDifficulty?: string }) => Promise<void>;
-  joinSession: (sessionId: string, playerName: string) => Promise<void>;
+  joinSession: (code: string, playerName: string) => Promise<void>;
   selectCountry: (countryCode: string) => Promise<void>;
   startGame: () => Promise<void>;
+  /** Guest: load the session the host just started and connect to it. */
+  enterStartedGame: () => Promise<void>;
   connectToGame: () => void;
   disconnectFromGame: () => void;
   setSelectedCountry: (code: string | null) => void;
@@ -73,6 +80,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lastTickAt: 0,
   selectedCountryCode: null,
   isPaused: false,
+  pausedBy: null,
+  pausesLeft: null,
   lastActionResult: null,
   proposalOutcomes: [],
   canSave: false,
@@ -93,9 +102,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ sessionId, playerId });
   },
 
-  joinSession: async (sessionId, playerName) => {
+  joinSession: async (code, playerName) => {
     const { transport } = get();
-    const { playerId } = await transport.joinSession(sessionId, playerName);
+    const { sessionId, playerId } = await transport.joinSession(code, playerName);
     set({ sessionId, playerId });
   },
 
@@ -110,8 +119,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { transport, sessionId, playerId } = get();
     if (!sessionId || !playerId) return;
     const initialState = await transport.startGame(sessionId, playerId);
-    const canSave = transport instanceof InMemoryTransport;
-    set({ gameState: initialState, currentTick: 0, canSave });
+    const singleplayer = transport instanceof InMemoryTransport;
+    set({ gameState: initialState, currentTick: 0, canSave: singleplayer, pausesLeft: singleplayer ? null : PAUSES_PER_PLAYER });
+    get().connectToGame();
+  },
+
+  enterStartedGame: async () => {
+    const { transport, sessionId } = get();
+    if (!sessionId) return;
+    const initialState = await transport.fetchState(sessionId);
+    set({
+      gameState: initialState,
+      currentTick: initialState.session.currentTick,
+      canSave: false,
+      pausesLeft: PAUSES_PER_PLAYER,
+    });
     get().connectToGame();
   },
 
@@ -133,8 +155,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       },
       onSessionStatus: (status) => {
-        if (status.status === 'paused') set({ isPaused: true });
-        if (status.status === 'resumed') set({ isPaused: false });
+        if (status.status === 'paused') {
+          const { pausesLeft, playerId: me } = get();
+          set({
+            isPaused: true,
+            pausedBy: status.playerId ?? null,
+            pausesLeft: status.playerId === me && pausesLeft !== null ? pausesLeft - 1 : pausesLeft,
+          });
+        }
+        if (status.status === 'resumed') set({ isPaused: false, pausedBy: null });
       },
       onGameEvent: (event) => {
         const { gameState: gs } = get();
@@ -164,6 +193,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastTickAt: 0,
       selectedCountryCode: null,
       isPaused: false,
+      pausedBy: null,
+      pausesLeft: null,
       lastActionResult: null,
       proposalOutcomes: [],
       canSave: false,
@@ -217,6 +248,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentTick: restoredState.session.currentTick,
       tensionIndex: restoredState.tensionIndex,
       canSave: true,
+      pausedBy: null,
+      pausesLeft: null,
       connected: false,
     });
     get().connectToGame();

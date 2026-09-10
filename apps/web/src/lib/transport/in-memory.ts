@@ -22,7 +22,7 @@ import {
   type GameLoopAdapter,
   type AIState,
 } from '@conflict-game/game-engine';
-import type { GameTransport, SessionOptions, TransportHandlers } from './types';
+import type { GameTransport, LobbyView, SessionOptions, TransportHandlers } from './types';
 
 /** Minimal session/player records — singleplayer never has more than one of each. */
 interface LocalSession {
@@ -124,8 +124,16 @@ export class InMemoryTransport implements GameTransport {
     return { sessionId, playerId };
   }
 
-  async joinSession(_sessionId: string, _playerName: string): Promise<{ playerId: string }> {
+  async joinSession(_code: string, _playerName: string): Promise<{ sessionId: string; playerId: string }> {
     throw new Error('Singleplayer does not support joining remote sessions');
+  }
+
+  async getLobby(_sessionId: string): Promise<LobbyView> {
+    throw new Error('Singleplayer has no lobby');
+  }
+
+  async fetchState(_sessionId: string): Promise<GameState> {
+    throw new Error('Singleplayer starts its own game');
   }
 
   async selectCountry(sessionId: string, playerId: string, countryCode: string) {

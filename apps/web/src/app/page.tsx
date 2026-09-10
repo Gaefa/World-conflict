@@ -41,6 +41,8 @@ export default function Home() {
     lastTickAt,
     selectedCountryCode,
     isPaused,
+    pausedBy,
+    pausesLeft,
     sessionId,
     connected,
     setSelectedCountry,
@@ -57,6 +59,8 @@ export default function Home() {
     lastTickAt: s.lastTickAt,
     selectedCountryCode: s.selectedCountryCode,
     isPaused: s.isPaused,
+    pausedBy: s.pausedBy,
+    pausesLeft: s.pausesLeft,
     sessionId: s.sessionId,
     connected: s.connected,
     setSelectedCountry: s.setSelectedCountry,
@@ -119,6 +123,8 @@ export default function Home() {
         tickDurationMs={tickDurationMs}
         lastTickAt={lastTickAt}
         onTogglePause={togglePause}
+        pausesLeft={pausesLeft}
+        pauseLocked={isPaused ? !!pausedBy && pausedBy !== playerId : pausesLeft === 0}
         canSave={canSave && gameState?.session.status === 'active'}
         onSave={() => setSaveLoadMode('save')}
       />

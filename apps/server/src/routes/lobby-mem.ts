@@ -1,12 +1,14 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt } from 'crypto';
 import { SEED_COUNTRIES } from '@conflict-game/shared-types';
 import type { GameSettings } from '@conflict-game/shared-types';
 
 // In-memory storage (no DB required)
 interface SessionRecord {
   id: string;
+  /** Short invite code — the only way into a lobby. */
+  code: string;
   name: string;
   status: string;
   settings: GameSettings;
@@ -45,6 +47,11 @@ export function seatPlayer(sessionId: string, token: string | undefined): string
   return playerId && playersList.get(playerId)?.sessionId === sessionId ? playerId : null;
 }
 
+/** The caller's playerId, from the `Authorization: Bearer <seat token>` header. */
+export function seatFromRequest(request: FastifyRequest, sessionId: string): string | null {
+  return seatPlayer(sessionId, request.headers.authorization?.replace(/^Bearer /, ''));
+}
+
 export function getSession(id: string) { return sessions.get(id); }
 export function getSessionPlayers(sessionId: string) {
   return [...playersList.values()].filter(p => p.sessionId === sessionId);
@@ -57,6 +64,33 @@ export function getPlayer(id: string) { return playersList.get(id); }
 export function updatePlayer(id: string, update: Partial<PlayerRecord>) {
   const p = playersList.get(id);
   if (p) playersList.set(id, { ...p, ...update });
+}
+
+/** No 0/O or 1/I — the code gets read out loud and typed by hand. */
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function newInviteCode(): string {
+  for (;;) {
+    const code = Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
+    if (![...sessions.values()].some(s => s.code === code && s.status !== 'finished')) return code;
+  }
+}
+
+/** Lobby players poll GET /sessions/:id. Whoever goes quiet (closed the
+ *  window, lost the connection) is dropped so they can't block the start. */
+const LOBBY_TIMEOUT_MS = 30_000;
+
+export function pruneLobby(sessionId: string): void {
+  const session = sessions.get(sessionId);
+  if (session?.status !== 'lobby') return;
+  const cutoff = Date.now() - LOBBY_TIMEOUT_MS;
+  for (const p of getSessionPlayers(sessionId)) {
+    if (p.lastSeenAt.getTime() >= cutoff) continue;
+    playersList.delete(p.id);
+    for (const [token, pid] of seatTokens) if (pid === p.id) seatTokens.delete(token);
+    // Only the host can start, so a lobby without one is over.
+    if (p.id === session.hostPlayerId) updateSession(sessionId, { status: 'finished' });
+  }
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -78,6 +112,7 @@ const CreateSessionBody = z.object({
 });
 
 const JoinSessionBody = z.object({
+  code: z.string().min(1),
   playerName: z.string().min(1),
 });
 
@@ -116,6 +151,7 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
 
     const session: SessionRecord = {
       id: sessionId,
+      code: newInviteCode(),
       name,
       status: 'lobby',
       settings,
@@ -142,24 +178,25 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(201).send({ session, player, token: issueSeat(playerId) });
   });
 
-  // POST /sessions/:id/join
-  app.post<{ Params: { id: string } }>('/sessions/:id/join', async (request, reply) => {
+  // POST /sessions/join — enter a lobby by its invite code
+  app.post('/sessions/join', async (request, reply) => {
     const parsed = JoinSessionBody.safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten() });
 
-    const { id: sessionId } = request.params;
-    const session = sessions.get(sessionId);
-    if (!session) return reply.status(404).send({ error: 'Session not found' });
-    if (session.status !== 'lobby') return reply.status(400).send({ error: 'Session not in lobby' });
+    const code = parsed.data.code.trim().toUpperCase();
+    const found = [...sessions.values()].find(s => s.code === code && s.status === 'lobby');
+    if (found) pruneLobby(found.id);
+    const session = found && getSession(found.id);
+    if (!session || session.status !== 'lobby') return reply.status(404).send({ error: 'Invalid invite code' });
 
-    const pls = getSessionPlayers(sessionId);
+    const pls = getSessionPlayers(session.id);
     if (pls.length >= session.settings.maxPlayers) return reply.status(400).send({ error: 'Session full' });
 
     const playerId = randomUUID();
     const player: PlayerRecord = {
       id: playerId,
       userId: playerId,
-      sessionId,
+      sessionId: session.id,
       name: parsed.data.playerName,
       countryCode: '',
       isAi: false,
@@ -168,14 +205,27 @@ export const lobbyMemRoutes: FastifyPluginAsync = async (app) => {
     };
     playersList.set(playerId, player);
 
-    return reply.status(201).send({ player, token: issueSeat(playerId) });
+    return reply.status(201).send({ sessionId: session.id, player, token: issueSeat(playerId) });
   });
 
-  // GET /sessions/:id
+  // GET /sessions/:id — lobby view for seat holders; polling it is the heartbeat
   app.get<{ Params: { id: string } }>('/sessions/:id', async (request, reply) => {
-    const session = sessions.get(request.params.id);
-    if (!session) return reply.status(404).send({ error: 'Not found' });
-    return { session, players: getSessionPlayers(session.id) };
+    const playerId = seatFromRequest(request, request.params.id);
+    if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
+    updatePlayer(playerId, { lastSeenAt: new Date() });
+    pruneLobby(request.params.id);
+
+    const session = sessions.get(request.params.id)!;
+    return {
+      session: {
+        id: session.id,
+        code: session.code,
+        name: session.name,
+        status: session.status,
+        hostPlayerId: session.hostPlayerId,
+      },
+      players: getSessionPlayers(session.id).map(p => ({ id: p.id, name: p.name, countryCode: p.countryCode })),
+    };
   });
 
   // GET /countries

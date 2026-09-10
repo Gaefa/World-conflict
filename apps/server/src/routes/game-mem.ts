@@ -1,8 +1,8 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { GameLoop, InMemoryGameStateStore, type GameLoopAdapter, createAIState, fogStateForPlayer } from '@conflict-game/game-engine';
 import type { AIState } from '@conflict-game/game-engine';
 import { broadcastToSession, sendToPlayer, getPlayerConnections } from '@conflict-game/game-transport';
-import { getSession, getSessionPlayers, updateSession, updatePlayer, seatPlayer } from './lobby-mem.js';
+import { getSession, getSessionPlayers, updateSession, updatePlayer, seatPlayer, seatFromRequest, pruneLobby } from './lobby-mem.js';
 import type { GameState, GameSettings, CountryState, IntelligenceState, TechnologyState } from '@conflict-game/shared-types';
 import { SEED_COUNTRIES, defaultTechBonuses } from '@conflict-game/shared-types';
 import { calculateIndexOfPower, PROCESSING_CHAINS, getStartingTechs, computeTechBonuses, createRNG } from '@conflict-game/game-logic';
@@ -54,11 +54,6 @@ gameLoop.setAIStates(aiStates);
 
 export { gameLoop, store };
 
-/** The caller's playerId, from the `Authorization: Bearer <seat token>` header. */
-function seatFromRequest(request: FastifyRequest, sessionId: string): string | null {
-  return seatPlayer(sessionId, request.headers.authorization?.replace(/^Bearer /, ''));
-}
-
 const fogRng = createRNG(Date.now());
 
 /** What this player may see: their own country clearly, the rest through fog. */
@@ -95,6 +90,10 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
     if (!playerId) return reply.status(401).send({ error: 'Seat token required' });
     if (playerId !== session.hostPlayerId) return reply.status(403).send({ error: 'Only the host can start the game' });
     if (session.status !== 'lobby') return reply.status(400).send({ error: 'Session not in lobby' });
+
+    // Drop players who left the lobby so they don't block the start.
+    updatePlayer(playerId, { lastSeenAt: new Date() });
+    pruneLobby(sessionId);
 
     const sessionPlayers = getSessionPlayers(sessionId);
     if (sessionPlayers.length < 1) return reply.status(400).send({ error: 'Need at least 1 player' });
@@ -184,7 +183,7 @@ export const gameMemRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: 'Country already taken' });
     }
 
-    updatePlayer(playerId, { countryCode });
+    updatePlayer(playerId, { countryCode, lastSeenAt: new Date() });
 
     return { success: true, countryCode };
   });

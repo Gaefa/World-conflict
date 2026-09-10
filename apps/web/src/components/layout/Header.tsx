@@ -15,6 +15,10 @@ interface HeaderProps {
   tickDurationMs?: number;
   lastTickAt?: number;
   onTogglePause?: () => void;
+  /** Pauses this player has left in multiplayer; null = unlimited (singleplayer). */
+  pausesLeft?: number | null;
+  /** Someone else's pause, or none left: the button can't act. */
+  pauseLocked?: boolean;
   canSave?: boolean;
   onSave?: () => void;
 }
@@ -28,6 +32,8 @@ export function Header({
   tickDurationMs = 10_000,
   lastTickAt = 0,
   onTogglePause,
+  pausesLeft = null,
+  pauseLocked = false,
   canSave,
   onSave,
 }: HeaderProps) {
@@ -97,13 +103,16 @@ export function Header({
         </div>
         <button
           onClick={onTogglePause}
-          className={`px-3 py-1 rounded text-sm font-bold uppercase tracking-wider transition-colors border ${
+          disabled={pauseLocked}
+          title={pauseLocked ? (isPaused ? t.pause_not_yours : t.pause_none_left) : undefined}
+          className={`px-3 py-1 rounded text-sm font-bold uppercase tracking-wider transition-colors border disabled:opacity-40 disabled:cursor-not-allowed ${
             isPaused
               ? 'bg-accent-green/20 text-accent-green border-accent-green/40 hover:bg-accent-green/30'
               : 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
           }`}
         >
           {isPaused ? t.header_resume : t.header_pause}
+          {!isPaused && pausesLeft !== null && <span className="ml-1 font-mono">· {pausesLeft}</span>}
         </button>
       </div>
     </header>
